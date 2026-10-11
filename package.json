@@ -1,0 +1,29 @@
+{
+  "name": "counter-yield",
+  "version": "1.0.0",
+  "description": "One-Tap Delta-Neutral Dollar Yield on Monad",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend",
+    "indexer"
+  ],
+  "scripts": {
+    "build:shared": "npm --workspace=shared run build",
+    "build:backend": "npm --workspace=backend run build",
+    "dev:backend": "npm --workspace=backend run dev",
+    "test:backend": "npm --workspace=backend test",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "monad",
+    "delta-neutral",
+    "kuru",
+    "perpl",
+    "carry-trade",
+    "defi"
+  ],
+  "author": "Counter Yield Team",
+  "license": "MIT"
+}

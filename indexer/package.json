@@ -1,0 +1,16 @@
+{
+  "name": "@counter-yield/indexer",
+  "version": "1.0.0",
+  "description": "Envio HyperIndex for Counter Yield protocol on Monad Testnet",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start"
+  },
+  "dependencies": {
+    "envio": "^2.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

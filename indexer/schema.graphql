@@ -1,0 +1,66 @@
+enum PositionState {
+  ACTIVE
+  REBALANCING
+  CLOSED
+  EMERGENCY_UNWOUND
+}
+
+type Position @entity {
+  id: ID!
+  owner: String! @index
+  marketId: String!
+  baseQuantity: BigInt!
+  spotEntryPrice: BigInt!
+  perpEntryPrice: BigInt!
+  leverage: Int!
+  state: PositionState!
+  realizedPnl: BigInt
+  openedAt: BigInt!
+  closedAt: BigInt
+  rebalanceCount: Int!
+  guardEventCount: Int!
+  rebalances: [RebalanceEvent!]! @derivedFrom(field: "position")
+  guardEvents: [GuardEvent!]! @derivedFrom(field: "position")
+}
+
+type RebalanceEvent @entity {
+  id: ID!
+  position: Position!
+  oldSpotQty: BigInt!
+  newSpotQty: BigInt!
+  oldPerpQty: BigInt!
+  newPerpQty: BigInt!
+  reason: String!
+  timestamp: BigInt!
+  txHash: String!
+}
+
+type GuardEvent @entity {
+  id: ID!
+  position: Position!
+  tier: Int!
+  marginRatioBps: BigInt!
+  action: String!
+  timestamp: BigInt!
+  txHash: String!
+}
+
+type UserPolicy @entity {
+  id: ID!
+  maxLeverage: Int!
+  maxSlippageBps: Int!
+  fundingFloorBps: Int!
+  maxDriftBps: Int!
+  updatedAt: BigInt!
+}
+
+type SpotTradeFill @entity {
+  id: ID!
+  user: String! @index
+  orderId: String!
+  quantity: BigInt!
+  price: BigInt!
+  side: Int!
+  timestamp: BigInt!
+  txHash: String!
+}

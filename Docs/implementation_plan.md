@@ -8,43 +8,43 @@
 
 Counter Yield is a mobile-native, non-custodial decentralized finance primitive that automates institutional basis trading (funding-rate cash-and-carry arbitrage) on Monad. By pairing a spot purchase on **Kuru** (an onchain Central Limit Order Book) with an equal-sized 1x short position on **Perpl** (an onchain perpetual DEX), the protocol creates a synthetic dollar exposure ($\Delta \approx 0$) that earns the continuous funding rate paid by perpetual longs.
 
-This document establishes the exhaustive architectural blueprint and phase-by-phase execution plan for the Counter Yield protocol on **Monad Testnet** (`chainId: 10143`). It strictly adheres to production full-stack standards, data-first state-driven architecture, and zero-mockup integration requirements.
+This document establishes the exhaustive architectural blueprint and phase-by-phase execution plan for the Counter Yield protocol on **Monad Testnet** (`chainId: 10143`). All venue endpoints, signing mechanisms, cryptographic vaults, and contract calls have been verified against the official **PerplFoundation/api-docs**, **Kuru-Labs/kuru-sdk**, and **category-labs/mera** repositories.
 
 ```mermaid
 graph TD
     subgraph Client ["Client Layer (Expo / React Native)"]
-        Auth["Mera WebAuthn PRF<br/>(Hardware Isolated)"]
-        UI["High-End Fintech UI<br/>(Net Delta, Live APR, Ladder)"]
+        Auth["Mera WebAuthn PRF<br/>(@category-labs/mera Secret Vault)"]
+        UI["High-End Dark Fintech UI<br/>(Net Delta, Live APR, Margin Ladder)"]
         Store["State Engine / TanStack Query"]
     end
 
     subgraph Backend ["Backend & Strategy Service"]
-        Router["Dual-Leg Execution Router<br/>(Perpl IOC -> Kuru Spot)"]
-        RiskGuard["3-Tier Risk Guard Engine<br/>(Top-Up, Deleverage, Unwind)"]
+        Router["Dual-Leg Execution Router<br/>(Perpl Ed25519 IOC -> Kuru Viem Spot)"]
+        RiskGuard["3-Tier Risk Guard Daemon<br/>(Top-Up, Deleverage, Emergency Unwind)"]
         Telemetry["Financial Telemetry Service<br/>(Real-Time Drift & Mark TWAP)"]
-        WSFeed["Real-Time WebSocket Gateway"]
+        WSFeed["Real-Time WebSocket Gateway<br/>(Sub-Second Push)"]
     end
 
-    subgraph Venues ["Monad Testnet Protocol Venues (10143)"]
-        PerplDEX["Perpl Perpetual DEX<br/>(Trade-Only Key / WS & REST)"]
-        KuruCLOB["Kuru Spot Orderbook<br/>(Onchain CLOB Router)"]
-        Ledger["CarryLedger.sol<br/>(Non-Custodial Audit Trail)"]
+    subgraph Venues ["Monad Testnet Protocol Venues (Chain ID 10143)"]
+        PerplDEX["Perpl Perpetual DEX<br/>(Market ID 64 | Ed25519 Signed REST & WS)"]
+        KuruCLOB["Kuru Spot Orderbook<br/>(placeAndExecuteMarketBuy / Market: MON/USDC)"]
+        Ledger["CarryLedger.sol<br/>(Non-Custodial Audit Trail & Proofs)"]
     end
 
     subgraph Indexer ["Data Indexing Layer"]
-        Envio["Envio HyperIndex Engine<br/>(Sub-second GraphQL API)"]
+        Envio["Envio HyperIndex Engine<br/>(Sub-second GraphQL API Layer)"]
     end
 
-    Auth -->|Decrypts Key to Memory| Router
+    Auth -->|Decrypts Vault to Volatile Memory| Router
     UI -->|1-Tap Start / Unwind| Store
-    Store -->|REST / WS| Backend
-    Router -->|1. Submit IOC Short| PerplDEX
-    Router -->|2. Spot Buy (Fill Confirmed)| KuruCLOB
-    Router -->|3. Anchor Hedge Proof| Ledger
+    Store -->|REST & WS Feeds| Backend
+    Router -->|1. Submit Ed25519 IOC Short| PerplDEX
+    Router -->|2. Spot Buy on Fill Confirmation| KuruCLOB
+    Router -->|3. Anchor State & Proof| Ledger
     RiskGuard -->|1s Block Interval Monitoring| PerplDEX
-    RiskGuard -->|Emergency Unwind / Deleverage| KuruCLOB
-    RiskGuard -->|Log Guard Event| Ledger
-    Ledger -->|Emit Onchain Events| Envio
+    RiskGuard -->|Deleverage & Emergency Unwind| KuruCLOB
+    RiskGuard -->|Log Guard Events| Ledger
+    Ledger -->|Emit Onchain State Events| Envio
     KuruCLOB -->|Emit Trade Fills| Envio
     Envio -->|GraphQL Queries| Store
 ```
@@ -53,13 +53,13 @@ graph TD
 
 ## Current State Analysis & Critical Flaw Detection
 
-Prior to scaffolding, an exhaustive audit of the project requirements and dependencies was conducted to identify structural bottlenecks, anti-patterns, and protocol vulnerabilities:
+Prior to scaffolding, an exhaustive audit of the project requirements, protocol source code, and dependencies was conducted to identify structural bottlenecks, anti-patterns, and protocol vulnerabilities:
 
 | # | Vulnerability / Anti-Pattern | Root Cause | Impact | Counter Yield Architectural Mitigation |
 | :--- | :--- | :--- | :--- | :--- |
 | **1** | **Monad Gas Burn Vulnerability** | Monad charges based on the **declared gas limit**, not actual gas consumed. Standard Viem/Ethers configs add 20–50% gas buffers. | Burning excessive native testnet/mainnet MON on every automated rebalance or state logging. | Custom Viem gas estimators that benchmark exact contract execution gas profiles and declare strictly bounded gas limits per call. |
-| **2** | **Sequential Dual-Leg Execution Risk** | Perpl and Kuru cannot be combined into an atomic EVM flash-transaction without custom cross-venue contracts. | If Leg 1 (Perpl short) fills and Leg 2 (Kuru spot buy) fails due to order book slippage, the user is left with a naked short in a rising market. | **Strict Leg Ordering with 3-Second Timeout Flattening**: Always route Perpl IOC limit order first. If Kuru spot order does not confirm fill within 3 seconds, immediately fire a reduce-only market order on Perpl to flatten exposure. |
-| **3** | **Custodial Leakage vs. Always-On Monitoring** | The Mera hackathon bounty strictly bans centralized backends holding user private keys or credentials. | Storing API keys on a remote keeper server disqualifies the bounty; but mobile devices sleep and disconnect. | **PRF Hardware Encryption + Exchange-Resident Backstops**: Perpl trade-only API key is encrypted at rest using passkey PRF (AES-256-GCM). During app sleep, resting reduce-only stop-market orders on Perpl at Tier 3 prices guarantee liquidation immunity without custodial servers. |
+| **2** | **Sequential Dual-Leg Execution Risk** | Perpl and Kuru cannot be combined into an atomic EVM flash-transaction without custom cross-venue contracts. | If Leg 1 (Perpl short) fills and Leg 2 (Kuru spot buy) fails due to order book slippage, the user is left with a naked short in a rising market. | **Strict Leg Ordering with 3-Second Timeout Flattening**: Always route Perpl IOC limit order first. If Kuru spot order does not confirm fill within 3 seconds, immediately fire a reduce-only market order on Perpl (`t: 4, fl: 4`) to flatten exposure. |
+| **3** | **Custodial Leakage vs. Always-On Monitoring** | The Mera hackathon bounty strictly bans centralized backends holding user private keys or credentials. | Storing API keys on a remote keeper server disqualifies the bounty; but mobile devices sleep and disconnect. | **PRF Hardware Encryption + Exchange-Resident Backstops**: Perpl trade-only Ed25519 API key is encrypted at rest using passkey PRF via `@category-labs/mera`'s native `PasskeySecretVault`. During app sleep, resting reduce-only stop-market orders on Perpl at Tier 3 prices guarantee liquidation immunity without custodial servers. |
 | **4** | **Rebalancing Delta Distortion ("Naked Short Drift")** | When margin falls, intuitively "selling spot to top up margin" reduces spot asset quantity without reducing short perp quantity. | Sells spot while holding the same short size $\rightarrow$ position turns net short, losing delta neutrality. | **Proportional Shrink Rule**: All rebalancing and deleveraging actions shrink both spot and perp legs by the identical fraction $f$, recycling freed spot capital into perp margin. |
 | **5** | **Simulated / Mocked Accrual Anti-Pattern** | Hackathon submissions often show a synthetic ticking timer for funding earnings. | Penalized under the Metropolis "Honesty Standard"; fails during live market validation. | **Dual-Stream Accrual Accounting**: Real-time ticker computes mathematical estimated accrual ($\text{rate} \times \text{notional} \times \Delta t$) labeled strictly as `Estimated`, while realized settled funding is independently reconciled via Envio indexer logs. |
 | **6** | **Flash Wick False Liquidation** | Single-block price spikes trigger premature emergency position unwinds, causing unnecessary fee burn. | Ephemeral volatility spikes trigger market sells during temporary wicks. | **Two-Consecutive-Block & TWAP Confirmation**: Tier 1 and Tier 2 monitor 30-second TWAPs; Tier 3 emergency unwind requires validation across two consecutive blocks ($\ge 2\text{ seconds}$). |
@@ -71,13 +71,13 @@ Prior to scaffolding, an exhaustive audit of the project requirements and depend
 ```text
 ├── PHASE 1: Project Architecture, Monorepo Scaffolding & Tooling Setup
 │   ├── Monorepo directory structure & configuration files
-│   ├── Package dependencies installation (Viem, Kuru, Perpl, Envio, Mera)
+│   ├── Package dependencies installation (Viem, @kuru-labs/kuru-sdk, @noble/ed25519, Envio, Mera)
 │   ├── Monad Testnet RPC & AUSD Faucet connectivity validation
 │   └── Shared TypeScript contracts & schemas
 │
 ├── PHASE 2: Core Backend Engine, Indexing & State Management Endpoints
-│   ├── Perpl REST & WebSocket Client (Auth, Mark Price, Order Routing)
-│   ├── Kuru CLOB Spot Client (L2 Depth, Execution, Slippage Bounding)
+│   ├── Perpl REST & WebSocket Client (Ed25519 Auth, Mark Price, Market ID 64, Order Routing)
+│   ├── Kuru CLOB Spot Client (L2 Depth, placeAndExecuteMarketBuy/Sell, Slippage Bounding)
 │   ├── Dual-Leg Strategy Engine (IOC Entry, 3s Timeout Flattening)
 │   ├── 3-Tier Risk Guard Daemon (Top-Up, Deleverage, Emergency Unwind)
 │   ├── Envio HyperIndex Data Layer (Schema, Config, Event Handlers)
@@ -90,7 +90,7 @@ Prior to scaffolding, an exhaustive audit of the project requirements and depend
 │   └── Deployment & verification on Monad Testnet (Chain ID 10143)
 │
 ├── PHASE 4: Mobile Client & UI Layer (React Native / Expo SDK 52+)
-│   ├── Mera WebAuthn PRF passkey authentication vault
+│   ├── Mera WebAuthn PRF passkey authentication vault (@category-labs/mera)
 │   ├── High-end dark fintech UI (NativeWind v4, Reanimated 3)
 │   ├── Live financial telemetry (Net Delta in $, Estimated APR, Leg Cards)
 │   ├── Interactive 3-Tier Risk Guard ladder & Distance-to-Liquidation gauge
@@ -130,7 +130,7 @@ e:/CounterYield/
 │   │   ├── CarryLedger.sol                 # Non-custodial audit trail & state anchor
 │   │   └── interfaces/
 │   │       ├── ICarryLedger.sol            # CarryLedger interface
-│   │       └── IKuruRouter.sol             # Kuru CLOB Router interface
+│   │       └── IKuruOrderBook.sol          # Kuru CLOB OrderBook interface
 │   ├── test/
 │   │   ├── CarryLedger.t.sol               # Foundry unit and fuzz tests
 │   │   └── mocks/
@@ -154,7 +154,7 @@ e:/CounterYield/
 │   └── src/
 │       ├── index.ts                        # Server entry point (REST & WS server)
 │       ├── config/
-│       │   ├── constants.ts                # Network IDs, addresses, fee tiers
+│       │   ├── constants.ts                # Network IDs, addresses, fee tiers, Perpl markets
 │       │   └── env.ts                      # Validated environment parser (Zod)
 │       ├── types/
 │       │   ├── common.ts                   # Standard return types, status enums
@@ -164,8 +164,8 @@ e:/CounterYield/
 │       │   └── risk.ts                     # Risk Guard tiers & telemetry types
 │       ├── clients/
 │       │   ├── monadClient.ts              # Viem client with tight Monad gas configuration
-│       │   ├── perplClient.ts              # Perpl REST & WebSocket authenticated client
-│       │   └── kuruClient.ts               # Kuru CLOB market-depth & order execution client
+│       │   ├── perplClient.ts              # Perpl Ed25519 authenticated REST & WS client
+│       │   └── kuruClient.ts               # Kuru CLOB market-depth & Viem order execution client
 │       ├── engine/
 │       │   ├── strategyEngine.ts           # Coordinated IOC dual-leg routing & fallback
 │       │   ├── orderSizer.ts               # Reserve buffer (10%) & margin allocation math
@@ -176,7 +176,7 @@ e:/CounterYield/
 │       │   ├── circuitBreakers.ts          # Stale feed, funding decay, AUSD depeg monitors
 │       │   └── stopBackstop.ts             # Exchange-resident reduce-only stop manager
 │       ├── api/
-│       │   ├── server.ts                   # Express / Fastify HTTP routing setup
+│       │   ├── server.ts                   # Fastify HTTP server setup
 │       │   ├── websocket.ts                # Sub-second WebSocket push gateway
 │       │   ├── routes/
 │       │   │   ├── healthRoutes.ts         # Ping, node status, RPC latency
@@ -190,14 +190,14 @@ e:/CounterYield/
 │       └── utils/
 │           ├── logger.ts                   # Structured Pino logger
 │           ├── retry.ts                    # Exponential backoff with jitter
-│           └── crypto.ts                   # EIP-712 signing & hash utilities
+│           └── crypto.ts                   # Ed25519 signing & hash utilities
 ├── shared/                                 # Cross-Tier Type Definitions & ABIs
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
 │       ├── abis/
 │       │   ├── CarryLedgerABI.ts           # TypeScript CarryLedger ABI
-│       │   ├── KuruRouterABI.ts            # Kuru Router ABI
+│       │   ├── KuruOrderBookABI.ts         # Kuru OrderBook ABI (placeAndExecuteMarketBuy/Sell)
 │       │   └── IERC20ABI.ts                # Canonical ERC20 ABI
 │       └── models/
 │           ├── PositionModel.ts            # Position domain entities
@@ -229,7 +229,7 @@ e:/CounterYield/
 │       ├── Plan.md                         # Product strategy & specifications
 │       └── Project_Spec.pdf                # Official Metropolis Project Specification
 ├── .gitignore                              # Comprehensive monorepo gitignore
-├── package.json                            # Root workspace package.json (npm / pnpm)
+├── package.json                            # Root workspace package.json
 └── README.md                               # Showcase README with architecture & proof links
 ```
 
@@ -237,8 +237,9 @@ e:/CounterYield/
 
 #### Backend, Indexer & Core Engine Stack:
 - **Runtime:** Node.js v24.11+ / TypeScript 5.6+
-- **HTTP / WebSocket Server:** Fastify / Express + `ws`
+- **HTTP / WebSocket Server:** Fastify + `@fastify/websocket` + `ws`
 - **Web3 & Blockchain:** `viem` v2.21+ (configured for Monad Testnet gas model)
+- **Cryptography & Signing:** `@noble/ed25519` (Perpl API signatures), `@category-labs/mera` (passkey PRF vault)
 - **Data Validation:** `zod` v3.23+
 - **Data Indexing:** `envio` v2.x HyperIndex
 - **HTTP Client:** `axios` / `graphql-request`
@@ -255,14 +256,14 @@ e:/CounterYield/
 - **Animation:** React Native Reanimated 3 (fluid micro-interactions for margin meters)
 - **Auth & Vault:** `@category-labs/mera` v0.2.0, `react-native-passkey`, `react-native-quick-crypto`
 
-### 1.3 Monad Testnet Specifications & Official Contracts
+### 1.3 Verified Protocol Ecosystem Specifications & Testnet Contracts
 
 All operations in Phases 1 through 3 will strictly utilize the **Monad Testnet**:
 
-| Parameter | Specification / Address | Notes |
+| Parameter | Specification / Address | Verified Source / Details |
 | :--- | :--- | :--- |
 | **Network Name** | Monad Testnet | Official test network |
-| **Chain ID** | `10143` | EVM Hex: `0x279f` |
+| **Chain ID** | `10143` | Hex: `0x279f` |
 | **Currency Symbol** | `MON` | Native gas token |
 | **Primary RPC URL** | `https://testnet-rpc.monad.xyz` | Official Monad RPC |
 | **Fallback RPC URL** | `https://rpc-testnet.monadinfra.com` | Monad Foundation Infrastructure |
@@ -273,9 +274,14 @@ All operations in Phases 1 through 3 will strictly utilize the **Monad Testnet**
 | **Kuru Router** | `0x7EFbE105Ca7415dE98F96622173458ac1c054630` | Official Kuru CLOB testnet router |
 | **Kuru Margin Account** | `0xd029C2D98ff85D8F64799017fE00a59B1159CE02` | Kuru Margin management |
 | **Kuru Forwarder** | `0x681bB1508E14433b148a2549ba2726454aDc9BB4` | Gasless / meta-tx forwarder |
-| **Kuru Testnet Market** | `0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9` | MON/USDC (or MON/AUSD equivalent) |
-| **Perpl REST API Base** | `https://testnet.perpl.xyz/api` | Perpl testnet endpoint |
-| **Perpl WebSocket Feed**| `wss://testnet.perpl.xyz` | Perpl sub-second mark & funding feed |
+| **Kuru MON-USDC Market**| `0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9` | Verified testnet orderbook |
+| **Kuru Method (Buy)** | `placeAndExecuteMarketBuy(uint256,uint256,bool,bool)` | `Kuru-Labs/kuru-sdk` `src/market/ioc.ts` |
+| **Kuru Method (Sell)**| `placeAndExecuteMarketSell(uint256,uint256,bool,bool)` | `Kuru-Labs/kuru-sdk` `src/market/ioc.ts` |
+| **Perpl REST API Base** | `https://testnet.perpl.xyz/api` | Verified in `PerplFoundation/api-docs` |
+| **Perpl WebSocket Feed**| `wss://testnet.perpl.xyz` | `/ws/v1/trading` and `/ws/v1/market-data` |
+| **Perpl MON Market ID** | `64` | Testnet market ID (BTC=16, ETH=32, SOL=48, MON=64) |
+| **Perpl Signing Auth** | Ed25519 canonical string + 4 headers | `X-API-Key`, `X-API-Timestamp`, `X-API-Nonce`, `X-API-Signature` |
+| **Mera Secret Vault** | `createSecretVaultWithNewPasskey` / `decryptSecretVaultWithPasskey` | Built-in native vault in `@category-labs/mera` `secret.ts` |
 
 ---
 
@@ -295,24 +301,25 @@ sequenceDiagram
     participant Ledger as CarryLedger.sol (Monad)
     participant Guard as Risk Guard Daemon
 
-    User->>Engine: POST /api/v1/strategy/enter { amount: 1000, marketId: "MON-AUSD", leverage: 1 }
-    Note over Engine: Pre-Trade Validation: Liquidity >= 3x size, Funding > 0, AUSD peg stable
+    User->>Engine: POST /api/v1/strategy/enter { amount: 1000, marketId: "MON", leverage: 1, passkeyVault }
+    Note over Engine: Pre-Trade Validation: Kuru Depth >= 3x size, Trailing Funding > 0, AUSD peg stable
     Engine->>Engine: Sizing Math: 100 AUSD Reserve (10%), 450 AUSD Spot, 450 AUSD Perp Margin
     
-    Engine->>Perpl: POST /order { type: "IOC", side: "SELL", qty: 450, price: markPrice }
-    Perpl-->>Engine: Order Filled { filledQty: 450, avgPrice: 10.0 }
+    Note over Engine: Leg 1: Submit Ed25519-Signed IOC Order to Perpl
+    Engine->>Perpl: POST /v1/trading/orders { d: [{ rq, mkt: 64, acc, t: 2, p: markPrice, s: scaledQty, fl: 4, lv: 100, lb }] }
+    Perpl-->>Engine: Order Accepted & Filled { status: { code: 0 }, filledQty: 45.0, avgPrice: 10.0 }
     
-    critical Dual-Leg Execution Guard
-        Engine->>Kuru: Execute Spot Buy { qty: 450, maxSlippage: 0.5% }
+    critical Dual-Leg Execution Guard (Sub-Second Window)
+        Engine->>Kuru: Viem: placeAndExecuteMarketBuy(quoteAmount, minAmountOut, isMargin: false, isFillOrKill: true)
         alt Spot Buy Fills within 3s
-            Kuru-->>Engine: Spot Filled { filledQty: 450, txHash: "0xabc..." }
+            Kuru-->>Engine: Spot Buy Confirmed { filledQty: 45.0, txHash: "0xabc..." }
             Engine->>Ledger: openHedge(marketId, qty, spotRef, perpRef, leverage)
             Ledger-->>Engine: Tx Confirmed { positionId: "0x123..." }
             Engine-->>User: Entry Complete { status: "ACTIVE", positionId: "0x123..." }
             Engine->>Guard: Arm Risk Guard for Position "0x123..."
         else Spot Buy Fails / Times Out (>3s)
-            Engine->>Perpl: POST /order { type: "MARKET", side: "BUY", reduceOnly: true, qty: 450 }
-            Perpl-->>Engine: Short Flattened
+            Engine->>Perpl: POST /v1/trading/orders { d: [{ rq, mkt: 64, acc, t: 4, p: 0, s: filledQty, fl: 4, lv: 0, lb }] }
+            Perpl-->>Engine: Short Leg Flattened (CloseShort reduce-only)
             Engine-->>User: Entry Aborted (Leg 2 Failure, Auto-Flattened to 100% AUSD)
         end
     end
@@ -328,12 +335,22 @@ $$\text{Spot Capital Allocation} = S_{\text{capital}} = \frac{C_{\text{active}}}
 $$\text{Perpl Margin Allocation} = M_{\text{initial}} = \frac{C_{\text{active}} \cdot L}{L + 1} = 450 \text{ AUSD}$$
 $$\text{Base Token Quantity} = Q = \frac{S_{\text{capital}}}{P_{\text{spot}}} = \frac{450}{10.00} = 45.0 \text{ tokens}$$
 
-#### 2. Net Delta in Dollars ($\Delta_{\$}$)
+#### 2. Venue Quantity Scaling
+- **Perpl Scaling:**
+  - Leverage hundredths: $lv = L \times 100 = 1 \times 100 = 100$.
+  - Scaled Size: $s = \text{round}(Q \times 10^{\text{size\_decimals}})$.
+  - Scaled Price: $p = \text{round}(P \times 10^{\text{price\_decimals}})$.
+- **Kuru Scaling:**
+  - Quote Size: $quoteAmount = \text{parseUnits}(S_{\text{capital}}, \log_{10}(\text{pricePrecision}))$.
+  - Base Size: $baseAmount = \text{parseUnits}(Q, \log_{10}(\text{sizePrecision}))$.
+  - Slippage Bounding: $minAmountOut = \text{parseUnits}(Q \times (1 - \text{maxSlippage}), \text{decimals})$.
+
+#### 3. Net Delta in Dollars ($\Delta_{\$}$)
 Let $P_{\text{spot}}$ be the live mid price on Kuru and $P_{\text{perp}}$ be the live mark price on Perpl:
 $$\Delta_{\$} = (Q_{\text{spot}} \cdot P_{\text{spot}}) - (Q_{\text{perp}} \cdot P_{\text{perp}})$$
 - **Safety Criterion:** Highlighted green when $|\Delta_{\$}| \le 0.01 \cdot (Q_{\text{spot}} \cdot P_{\text{spot}})$ (within $\pm 1\%$ delta-neutral band).
 
-#### 3. Real-Time Margin Ratio & 3-Tier Defense Math
+#### 4. Real-Time Margin Ratio & 3-Tier Defense Math
 At any token mark price $P$:
 $$\text{Perpl Short PnL} = \Delta \text{PnL} = Q_{\text{perp}} \cdot (P_{\text{entry}} - P)$$
 $$\text{Remaining Margin} = M(P) = M_{\text{initial}} + \Delta \text{PnL} + \text{Accrued Funding}$$
@@ -353,7 +370,7 @@ $$\text{Margin Ratio } R_m(P) = \frac{M(P)}{N(P)}$$
   - Fires parallel reduce-only market buy order on Perpl and spot market sell on Kuru.
   - Locks all capital in 100% AUSD; logs `EmergencyUnwind` to `CarryLedger.sol`.
 
-#### 4. Break-Even Period Calculator
+#### 5. Break-Even Period Calculator
 $$\text{Round-Trip Cost} = \text{Taker Fee}_{\text{Kuru}} + \text{Taker Fee}_{\text{Perpl}} + \text{Est Slippage}_{\text{Kuru}} + \text{Est Slippage}_{\text{Perpl}}$$
 $$\text{Assuming } \text{Round-Trip Cost} \approx 0.20\% \text{ and } \text{Annual Funding Rate} = 15\%:$$
 $$\text{Daily Net Carry} = \frac{15\% \times \frac{L}{L+1}}{365} = \frac{7.5\%}{365} \approx 0.0205\% \text{ of total capital / day}$$
@@ -376,18 +393,19 @@ The backend service exposes standard REST and WebSocket endpoints. Every route i
         "blockNumber": 14920421,
         "rpcLatencyMs": 42
       },
-      "kuru": { "status": "connected", "activeMarkets": ["MON-USDC", "MON-AUSD"] },
-      "perpl": { "status": "connected", "wsPingMs": 28, "fundingIntervalSec": 3600 }
+      "kuru": { "status": "connected", "activeMarkets": ["MON-USDC"] },
+      "perpl": { "status": "connected", "wsPingMs": 28, "marketId": 64, "fundingIntervalSec": 3600 }
     }
     ```
 
 #### 2. Market Analytics & Pre-Trade Quotes
-- **`GET /api/v1/market/quote?marketId=MON-AUSD&amount=1000&leverage=1`**
+- **`GET /api/v1/market/quote?marketId=MON&amount=1000&leverage=1`**
   - **Description:** Runs pre-trade filters, calculates reserve buffer, estimated APR, round-trip fees, and break-even duration.
   - **Response (200 OK):**
     ```json
     {
-      "marketId": "MON-AUSD",
+      "marketId": "MON",
+      "perplMarketId": 64,
       "eligible": true,
       "rejectionReason": null,
       "sizing": {
@@ -416,17 +434,22 @@ The backend service exposes standard REST and WebSocket endpoints. Every route i
 
 #### 3. Coordinated Execution
 - **`POST /api/v1/strategy/enter`**
-  - **Description:** Executes the coordinated dual-leg entry sequence (Perpl IOC -> Kuru Spot Buy -> CarryLedger proof).
+  - **Description:** Executes the coordinated dual-leg entry sequence (Perpl Ed25519 IOC -> Kuru Spot Buy -> CarryLedger proof).
   - **Request Body:**
     ```json
     {
       "ownerAddress": "0x4a12...9b21",
-      "marketId": "MON-AUSD",
+      "marketId": "MON",
       "depositAmount": "1000.00",
       "leverage": 1,
       "maxSlippageBps": 50,
-      "apiKeyCiphertext": "a8f3b1...",
-      "iv": "3c92..."
+      "passkeyVault": {
+        "version": 1,
+        "credential": { "credentialId": "AQIDBA..." },
+        "prfSalt": "bG9s...",
+        "nonce": "aW5pdA...",
+        "ciphertext": "ZGF0YQ..."
+      }
     }
     ```
   - **Response (201 Created):**
@@ -436,7 +459,7 @@ The backend service exposes standard REST and WebSocket endpoints. Every route i
       "positionId": "0x98124bcf891234...",
       "legs": {
         "perpShort": {
-          "orderId": "perpl-ord-9921",
+          "orderId": "64-1002",
           "filledQty": "45.00",
           "avgPrice": "10.00",
           "marginDeposited": "450.00"
@@ -483,7 +506,7 @@ The backend service exposes standard REST and WebSocket endpoints. Every route i
 
 #### 5. Manual & Emergency Unwind
 - **`POST /api/v1/strategy/unwind`**
-  - **Description:** 1-Tap execution: Closes Perpl short with reduce-only market order, liquidates Kuru spot, updates CarryLedger, and returns 100% AUSD.
+  - **Description:** 1-Tap execution: Closes Perpl short with reduce-only market order (`t: 4, fl: 4`), liquidates Kuru spot (`placeAndExecuteMarketSell`), updates CarryLedger, and returns 100% AUSD.
   - **Request Body:**
     ```json
     {
@@ -539,10 +562,10 @@ contracts:
       - event: GuardTriggered(bytes32 indexed positionId, uint8 tier, uint256 marginRatioBps, string action, uint256 timestamp)
       - event: EmergencyUnwind(bytes32 indexed positionId, string reason, uint256 timestamp)
       - event: PolicySet(address indexed user, uint8 maxLeverage, uint16 maxSlippageBps, uint16 fundingFloorBps, uint16 maxDriftBps)
-  - name: KuruRouter
-    abi_file_path: ../shared/src/abis/KuruRouterABI.json
+  - name: KuruOrderBook
+    abi_file_path: ../shared/src/abis/KuruOrderBookABI.json
     events:
-      - event: OrderFilled(bytes32 indexed orderId, address indexed user, uint256 quantity, uint256 price, uint8 side, uint256 timestamp)
+      - event: Trade(uint256 indexed orderId, address indexed maker, address indexed taker, bool isBuy, uint256 price, uint256 size, uint256 timestamp)
 chains:
   - id: 10143
     rpc_config:
@@ -551,8 +574,8 @@ chains:
     contracts:
       - name: CarryLedger
         address: "0x0000000000000000000000000000000000000000" # Updated upon Phase 3 deployment
-      - name: KuruRouter
-        address: "0x7EFbE105Ca7415dE98F96622173458ac1c054630"
+      - name: KuruOrderBook
+        address: "0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9"
 ```
 
 #### 2. `indexer/schema.graphql`
@@ -647,14 +670,33 @@ Because Monad charges transactions based on the **declared gas limit**, the cont
 
 # Phase 4: Mobile Client & UI Layer (React Native / Expo SDK 52+)
 
-### 4.1 Mera Passkey & WebAuthn PRF Credential Vault
-The mobile application uses `@category-labs/mera` with `react-native-passkey`. Rather than simply deriving wallet keys, it leverages the WebAuthn PRF (Pseudo-Random Function) extension:
-1. User authenticates via Face ID / Touch ID.
-2. Device returns a deterministic 32-byte secret PRF output.
-3. The app executes `HKDF-SHA256` using the PRF output to derive a 256-bit AES-GCM symmetric key:
-   $$\text{Key}_{\text{vault}} = \text{HKDF-SHA256}(\text{ikm}=\text{prfOutput}, \text{salt}=0^{32}, \text{info}="\text{carry/perpl-api-key/v1}")$$
-4. The Perpl trade-only API key is decrypted in volatile memory for the duration of the active session.
-5. Buffers are purged on app termination; plaintext keys are never logged or persisted in `AsyncStorage`.
+### 4.1 Native Mera Passkey Secret Vault
+The mobile application utilizes `@category-labs/mera`'s native secret vault architecture (`secret.ts`):
+1. **Enrollment / Vault Creation:**
+   ```typescript
+   import { createSecretVaultWithNewPasskey } from '@category-labs/mera';
+   
+   // Ed25519 private key generated in volatile memory
+   const ed25519Secret = randomBytes(32);
+   
+   const vault = await createSecretVaultWithNewPasskey({
+     rpId: 'counteryield.app',
+     secret: ed25519Secret,
+   });
+   // Returns JSON-safe PasskeySecretVault with AES-256-GCM ciphertext
+   ```
+2. **Session Decryption:**
+   ```typescript
+   import { decryptSecretVaultWithPasskey } from '@category-labs/mera';
+   
+   // Decrypts purely into volatile memory for the active trading session
+   const decryptedSecret = await decryptSecretVaultWithPasskey({
+     rpId: 'counteryield.app',
+     vault: storedVault,
+   });
+   // Buffers are immediately zeroed out after session unmount
+   ```
+3. **No Custody Backend:** Zero seed phrases, no private keys on any server, and no plaintext keys stored in AsyncStorage.
 
 ### 4.2 Screens & Design System Tokens (NativeWind v4)
 - **Palette:** Obsidian background (`#0B0E14`), Slate border (`#1E2638`), Emerald accent (`#00F090`, delta-neutral safe), Amber warning (`#FFB020`, Tier 1 & 2), Crimson alert (`#FF3B30`, Tier 3 emergency).
@@ -679,10 +721,10 @@ To guarantee flawless behavior without risking testnet funds, an automated stres
 
 ### 5.2 Hackathon Submission & Bounty Stacking Checklist
 - [ ] **Agora ($10,000):** Mobile React Native app, Mera auth, AUSD balance, trades on Perpl.
-- [ ] **Kuru ($5,000):** Consumer spot product routed via Kuru CLOB + standalone spot book viewer.
-- [ ] **Perpl ($5,000):** Production-grade automation with IOC limit orders, 3s timeout fallbacks, rate-limit retries.
+- [ ] **Kuru ($5,000):** Consumer spot product routed via Kuru CLOB (`placeAndExecuteMarketBuy`) + standalone spot book viewer.
+- [ ] **Perpl ($5,000):** Production-grade automation with Ed25519 signatures, Market ID 64, IOC limit orders, 3s timeout fallbacks, rate-limit retries.
 - [ ] **Monad Mera UX ($2,500):** Pure passkey account layer, zero seed phrases, no custody backends.
-- [ ] **Monad PRF ($2,500):** Hardware-isolated PRF-encrypted Perpl API key vault.
+- [ ] **Monad PRF ($2,500):** Hardware-isolated PRF-encrypted Perpl API key vault via `@category-labs/mera`.
 - [ ] **Envio ($1,000):** Real-time GraphQL endpoints driving core Position and Activity history screens.
 - [ ] **Track 01 & Grand Prize ($10,000 - $25,000):** Institutional delta-neutral basis trading primitive.
 - [ ] **3-Minute Demo Video:** Unedited recording on physical smartphone showing Face ID login, deposit, entry, live MonadScan confirmation, Risk Guard drill, and 1-tap Unwind.
@@ -702,11 +744,11 @@ To guarantee flawless behavior without risking testnet funds, an automated stres
    - Implement `backend/src/clients/monadClient.ts` to test RPC ping, block number fetch, and verify AUSD ERC20 contract bytecodes.
 
 ### Immediate Phase 2 Tasks:
-1. **Shared ABIs & Data Models:** Define `CarryLedgerABI`, `KuruRouterABI`, and TypeScript types for order quotes, positions, and risk metrics.
+1. **Shared ABIs & Data Models:** Define `CarryLedgerABI`, `KuruOrderBookABI`, and TypeScript types for order quotes, positions, and risk metrics.
 2. **Venue Clients Implementation:**
-   - `kuruClient.ts`: Fetch L2 orderbook depth, execute spot market/limit orders via Viem.
-   - `perplClient.ts`: Authenticate via EIP-712 trade-only key, stream WebSocket mark prices and funding rates, submit IOC limit orders.
+   - `kuruClient.ts`: Fetch L2 orderbook depth, execute spot market/limit orders via Viem (`placeAndExecuteMarketBuy/Sell`).
+   - `perplClient.ts`: Authenticate via Ed25519 trade-only key, stream WebSocket mark prices and funding rates, submit IOC limit orders on Market ID 64.
 3. **Strategy & Sizing Engines:** Implement `orderSizer.ts`, `breakEvenCalc.ts`, and `strategyEngine.ts` (coordinated entry with 3-second timeout fallback).
 4. **Risk Guard Daemon:** Implement `riskGuard.ts` (sub-second margin ratio loop, Tier 1 reserve draw, Tier 2 proportional deleverage, Tier 3 emergency unwind).
 5. **Envio HyperIndex Data Layer:** Setup `config.yaml`, `schema.graphql`, and event handlers for GraphQL telemetry.
-6. **Production REST & WebSocket API:** Implement Express/Fastify routes and sub-second WebSocket broadcasting gateway.
+6. **Production REST & WebSocket API:** Implement Fastify routes and sub-second WebSocket broadcasting gateway.

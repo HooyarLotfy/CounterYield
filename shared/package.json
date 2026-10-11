@@ -1,0 +1,17 @@
+{
+  "name": "@counter-yield/shared",
+  "version": "1.0.0",
+  "description": "Shared ABIs, domain models, and interfaces for Counter Yield",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

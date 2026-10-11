@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.testnet.example
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+artifacts/
+cache/
+
+# Foundry
+out/
+broadcast/
+
+# Indexer
+indexer/.envio/
+indexer/generated/
+
+# Mobile / Expo
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
