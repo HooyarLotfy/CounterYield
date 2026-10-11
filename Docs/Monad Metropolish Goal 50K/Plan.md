@@ -1,16 +1,18 @@
 # Name & Short Title
 
-**Name:** Counter Yield  
-**Short Title:** One-Tap Delta-Neutral Dollar Yield on Monad  
-*(Monad Metropolis Hackathon — Track 01: Onchain Finance & Trading)*
+- **Name:** Counter Yield
+- **Short Title:** One-Tap Delta-Neutral Dollar Yield on Monad
+- **Hackathon Track:** *(Monad Metropolis Hackathon — Track 01: Onchain Finance & Trading)*
 
 ---
 
 ## Short Description: Problem & Solution
 
-**The Problem:** Funding-rate counter yield is the premier market-neutral cash-flow strategy in DeFi, yet it is operationally hostile for regular users. Executing it manually requires managing two separate accounts across spot and perpetual venues, calculating hedge ratios, manual margin top-ups, navigating clunky Web3 wallets/seed phrases, and continuous 24/7 monitoring. When volatility hits, retail traders frequently get the hedge ratio wrong, miscalculate margin requirements, or suffer liquidation on the short leg (which destroys the hedge, inflicts liquidation penalties, and converts the position into naked spot risk).
+### The Problem
+Funding-rate counter yield is the premier market-neutral cash-flow strategy in DeFi, yet it is operationally hostile for regular users. Executing it manually requires managing two separate accounts across spot and perpetual venues, calculating hedge ratios, manual margin top-ups, navigating clunky Web3 wallets/seed phrases, and continuous 24/7 monitoring. When volatility hits, retail traders frequently get the hedge ratio wrong, miscalculate margin requirements, or suffer liquidation on the short leg (which destroys the hedge, inflicts liquidation penalties, and converts the position into naked spot risk).
 
-**The Solution:** Counter Yield packages two-venue institutional basis trading into a mobile-native consumer primitive. Users sign in via biometrics (passkey via Mera, zero seed phrases) and deposit AUSD. With a single tap, Counter Yield executes an automated paired trade: buying spot on Kuru (fully onchain order book) and opening an equal-sized 1x short on Perpl (perpetual DEX). Net price exposure cancels to zero ($\Delta \approx 0$), capturing the continuous funding rate paid by perp longs. Counter Yield wraps this in an automated in-app Risk Guard (3-tier margin defense ladder + AUSD reserve buffer), logs verifiable proofs to an onchain CarryLedger contract, indexes position history via Envio HyperIndex, and provides a guaranteed 1-tap exit (Unwind).
+### The Solution
+Counter Yield packages two-venue institutional basis trading into a mobile-native consumer primitive. Users sign in via biometrics (passkey via Mera, zero seed phrases) and deposit AUSD. With a single tap, Counter Yield executes an automated paired trade: buying spot on Kuru (fully onchain order book) and opening an equal-sized 1x short on Perpl (perpetual DEX). Net price exposure cancels to zero ($\Delta \approx 0$), capturing the continuous funding rate paid by perp longs. Counter Yield wraps this in an automated in-app Risk Guard (3-tier margin defense ladder + AUSD reserve buffer), logs verifiable proofs to an onchain CarryLedger contract, indexes position history via Envio HyperIndex, and provides a guaranteed 1-tap exit (Unwind).
 
 ---
 
@@ -48,6 +50,7 @@ The Risk Guard prevents short leg liquidation during upward price spikes through
 ```
 
 **Calculation:**
+
 $$\text{Margin Ratio} = \frac{\text{Perpl Margin Remaining}}{\text{Current Short Notional}}$$
 
 - **Normal Tier ($\ge 60\%$ Margin Ratio):** Position monitored on every Monad block; live ladder displayed to the user.
@@ -145,7 +148,7 @@ $$\text{Margin Ratio} = \frac{\text{Perpl Margin Remaining}}{\text{Current Short
    ┌─────────────────────────────────────────────────────────────────────────────┐
    │                           Envio HyperIndex Engine                           │
    │                     (Sub-second GraphQL API Layer)                          │
-   └────────────────────────────────────────┬────────────────────────────────────┘
+   │   └────────────────────────────────────────┬────────────────────────────────┘
                                             │ Real-time Queries
                                             ▼
                          [ Mobile Position & Activity UI ]
@@ -197,23 +200,25 @@ Every block ($\approx 1$ second on Monad):
 
 ### 72-Hour Rapid Implementation Roadmap
 
-#### [Day 1: Foundation]
-- ├── **Hours 0-2:** Kill-Gate Verification (Token overlap, Perpl API keys, AUSD faucet, Mera PRF)
-- ├── **Hours 2-6:** Monad Contracts (`CarryLedger.sol`) via Foundry + Deployment
-- ├── **Hours 6-12:** Venue API Integration Clients (Kuru viem client, Perpl REST/WS client)
-- └── **Hours 12-16:** Open first live test position on Monad; log tx hashes in `TX_LOG.md`
-
-#### [Day 2: Core Engine & Screens]
-- ├── **Hours 16-22:** Strategy Engine (IOC entry, 3-second timeout fallback, Unwind logic)
-- ├── **Hours 22-28:** In-App Risk Guard (Tier 1-3 ladder, reserve buffer math, stress harness)
-- ├── **Hours 28-34:** Envio HyperIndex Setup (Event schema, GraphQL queries for Position/Activity)
-- └── **Hours 34-40:** Mobile UI Screens (Unlock Vault, Home, Position with dynamic ladder, Spot tab)
-
-#### [Day 3: Hardening, Polish & Submission]
-- ├── **Hours 40-48:** Real-device testing (iOS/Android), Monad tight gas limit optimizations
-- ├── **Hours 48-56:** Comprehensive README documentation, architecture diagrams, `.env.example`
-- ├── **Hours 56-62:** 3-Minute Demo Video Recording (Physical device, live tx confirmations)
-- └── **Hours 62-72:** Submission buffer (Submit by 14:00 ET / 21:00 Istanbul; 8-hour safety window)
+```text
+├── [Day 1: Foundation]
+│   ├── Hours 0-2:   Kill-Gate Verification (Token overlap, Perpl API keys, AUSD faucet, Mera PRF)
+│   ├── Hours 2-6:   Monad Contracts (CarryLedger.sol) via Foundry + Deployment
+│   ├── Hours 6-12:  Venue API Integration Clients (Kuru viem client, Perpl REST/WS client)
+│   └── Hours 12-16: Open first live test position on Monad; log tx hashes in TX_LOG.md
+│
+├── [Day 2: Core Engine & Screens]
+│   ├── Hours 16-22: Strategy Engine (IOC entry, 3-second timeout fallback, Unwind logic)
+│   ├── Hours 22-28: In-App Risk Guard (Tier 1-3 ladder, reserve buffer math, stress harness)
+│   ├── Hours 28-34: Envio HyperIndex Setup (Event schema, GraphQL queries for Position/Activity)
+│   └── Hours 34-40: Mobile UI Screens (Unlock Vault, Home, Position with dynamic ladder, Spot tab)
+│
+└── [Day 3: Hardening, Polish & Submission]
+    ├── Hours 40-48: Real-device testing (iOS/Android), Monad tight gas limit optimizations
+    ├── Hours 48-56: Comprehensive README documentation, architecture diagrams, .env.example
+    ├── Hours 56-62: 3-Minute Demo Video Recording (Physical device, live tx confirmations)
+    └── Hours 62-72: Submission buffer (Submit by 14:00 ET / 21:00 Istanbul; 8-hour safety window)
+```
 
 ### Kill-Gate Criteria (Hours 0 to 2)
 
