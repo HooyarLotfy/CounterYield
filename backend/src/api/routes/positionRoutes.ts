@@ -3,14 +3,19 @@ import { PositionModel } from '@counter-yield/shared';
 import { riskGuard } from '../../guard/riskGuard.js';
 import { perplClient } from '../../clients/perplClient.js';
 import { PERPL_TESTNET_MARKETS } from '../../config/constants.js';
+import { db } from '../../db/database.js';
 
-export const activePositions = new Map<string, PositionModel>();
+export const activePositions = {
+  get: (id: string): PositionModel | undefined => db.getPosition(id),
+  has: (id: string): boolean => !!db.getPosition(id),
+  values: (): PositionModel[] => db.getAllPositions(),
+};
 
 export async function positionRoutes(fastify: FastifyInstance) {
   // Fetch specific position by ID
   fastify.get('/api/v1/position/:positionId', async (request: FastifyRequest<{ Params: { positionId: string } }>) => {
     const { positionId } = request.params;
-    const position = activePositions.get(positionId);
+    const position = db.getPosition(positionId);
 
     if (!position) {
       return {
@@ -49,14 +54,28 @@ export async function positionRoutes(fastify: FastifyInstance) {
   // Fetch all positions for an owner
   fastify.get('/api/v1/positions', async (request: FastifyRequest<{ Querystring: { owner?: string } }>) => {
     const { owner } = request.query;
-    let list = Array.from(activePositions.values());
-    if (owner) {
-      list = list.filter((p) => p.ownerAddress.toLowerCase() === owner.toLowerCase());
-    }
+    const list = db.getAllPositions(owner);
 
     return {
       success: true,
       data: list,
+      timestamp: Date.now(),
+    };
+  });
+
+  // Fetch audit records for a position
+  fastify.get('/api/v1/position/:positionId/history', async (request: FastifyRequest<{ Params: { positionId: string } }>) => {
+    const { positionId } = request.params;
+    const guardHistory = db.getGuardRecords(positionId);
+    const rebalanceHistory = db.getRebalanceRecords(positionId);
+
+    return {
+      success: true,
+      data: {
+        positionId,
+        guardHistory,
+        rebalanceHistory,
+      },
       timestamp: Date.now(),
     };
   });

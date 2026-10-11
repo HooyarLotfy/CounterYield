@@ -10,4 +10,8 @@ This file maintains an auditable, chronological record of all onchain transactio
 | 2026-10-11 21:00 | 10143 | Venue Verification | Perpl DEX | `https://testnet.perpl.xyz/api` | VERIFIED | MON Market ID: 64 |
 | 2026-10-11 22:30 | 10143 | Monorepo Setup | Monorepo Root | `@counter-yield/*` | VERIFIED | npm workspaces, tsconfigs, and GitHub CI initialized |
 | 2026-10-11 22:32 | 10143 | Engine Validation | Backend Suite | `http://localhost:4000` | VERIFIED | 6/6 test suites passed: dual-leg, risk ladder, circuit breakers, endpoints |
+| 2026-10-11 23:12 | 10143 | Contract Tests | Foundry Suite | `contracts/test/CarryLedger.t.sol` | VERIFIED | 8/8 tests passed: non-custodial ledger, policy cap, rebalance bounds, guard locks |
+| 2026-10-11 23:12 | 10143 | Gas Benchmark | Monad Declared Gas | `contracts/script/GasBenchmark.s.sol` | VERIFIED | openHedge: 357k (limit 411k), rebalance: 50k (limit 57k), guard: 33k, close: 80k |
+| 2026-10-11 23:18 | 10143 | Stress & DB Engine | Backend Suite | `backend/src/test/stressHarness.test.ts` | VERIFIED | 12/12 test suites passed: +25%/+45%/+65% shocks, flash wick, 4-point eligibility, DB |
+
 

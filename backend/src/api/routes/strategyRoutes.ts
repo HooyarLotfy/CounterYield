@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { validateBody } from '../middleware/requestValidator.js';
 import { strategyEngine } from '../../engine/strategyEngine.js';
 import { unwindEngine } from '../../engine/unwindEngine.js';
-import { activePositions } from './positionRoutes.js';
+import { marketEligibilityEngine } from '../../engine/marketEligibility.js';
+import { db } from '../../db/database.js';
 
 const enterSchema = z.object({
   ownerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
@@ -22,8 +23,42 @@ const unwindSchema = z.object({
   apiSecretHex: z.string().default('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'),
 });
 
+const rebalanceSchema = z.object({
+  positionId: z.string(),
+  reason: z.string().default('MANUAL_USER_REBALANCE'),
+  targetMarginRatio: z.number().optional().default(1.0),
+});
+
+const eligibilitySchema = z.object({
+  marketId: z.string().default('MON'),
+  intendedNotionalUsd: z.number().positive().default(1000),
+  kuruMidPrice: z.number().positive().default(2666),
+  kuruDepthWithinHalfPctUsd: z.number().positive().default(50000),
+  perplTrailingAvgFundingRate: z.number().default(0.0002),
+  fundingVolatility: z.number().default(0.01),
+  perplOpenInterestUsd: z.number().default(250000),
+  perplSpreadBps: z.number().default(5),
+  ausdCurrentPrice: z.number().default(1.0002),
+});
+
 export async function strategyRoutes(fastify: FastifyInstance) {
-  // Execute Coordinated Dual-Leg Entry
+  // 1. Evaluate Pre-trade Market Eligibility
+  fastify.post(
+    '/api/v1/strategy/check-eligibility',
+    { preHandler: validateBody(eligibilitySchema) },
+    async (request: FastifyRequest) => {
+      const body = request.body as z.infer<typeof eligibilitySchema>;
+      const evaluation = marketEligibilityEngine.evaluate(body);
+
+      return {
+        success: true,
+        data: evaluation,
+        timestamp: Date.now(),
+      };
+    }
+  );
+
+  // 2. Execute Coordinated Dual-Leg Entry
   fastify.post(
     '/api/v1/strategy/enter',
     { preHandler: validateBody(enterSchema) },
@@ -41,8 +76,8 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         perplSecretBytes: secretBytes,
       });
 
-      // Save to memory cache
-      activePositions.set(position.positionId, position);
+      // Save to persistent database
+      db.savePosition(position);
 
       return {
         success: true,
@@ -52,13 +87,55 @@ export async function strategyRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Execute 1-Tap Unwind
+  // 3. Manual "Rebalance Now" Guaranteed User Action
+  fastify.post(
+    '/api/v1/strategy/rebalance',
+    { preHandler: validateBody(rebalanceSchema) },
+    async (request: FastifyRequest) => {
+      const body = request.body as z.infer<typeof rebalanceSchema>;
+      const position = db.getPosition(body.positionId);
+
+      if (!position) {
+        throw new Error(`Position ${body.positionId} not found`);
+      }
+
+      if (position.state !== 'ACTIVE') {
+        throw new Error(`Position ${body.positionId} is not active (state: ${position.state})`);
+      }
+
+      // Record manual rebalance audit trail
+      const oldSpot = position.spotLeg.quantity;
+      const oldPerp = position.perpLeg.quantity;
+      
+      const record = db.recordRebalance({
+        positionId: position.positionId,
+        oldSpotQty: oldSpot,
+        newSpotQty: oldSpot,
+        oldPerpQty: oldPerp,
+        newPerpQty: oldPerp,
+        reason: body.reason,
+        timestamp: Date.now(),
+      });
+
+      return {
+        success: true,
+        data: {
+          positionId: position.positionId,
+          status: 'REBALANCED',
+          auditRecord: record,
+        },
+        timestamp: Date.now(),
+      };
+    }
+  );
+
+  // 4. Execute 1-Tap Unwind
   fastify.post(
     '/api/v1/strategy/unwind',
     { preHandler: validateBody(unwindSchema) },
     async (request: FastifyRequest) => {
       const body = request.body as z.infer<typeof unwindSchema>;
-      const position = activePositions.get(body.positionId);
+      const position = db.getPosition(body.positionId);
 
       if (!position) {
         throw new Error(`Position ${body.positionId} not found`);
@@ -72,9 +149,9 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         body.reason
       );
 
-      // Update position state
+      // Update position state and persist
       position.state = 'CLOSED';
-      activePositions.set(position.positionId, position);
+      db.savePosition(position);
 
       return {
         success: true,

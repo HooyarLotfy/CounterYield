@@ -39,6 +39,8 @@ indexer/generated/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+backend/data/*.json
+
 
 # OS files
 .DS_Store

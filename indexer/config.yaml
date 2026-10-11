@@ -3,15 +3,15 @@ description: High-throughput indexing for Counter Yield delta-neutral protocol o
 contracts:
   - name: CarryLedger
     events:
-      - event: HedgeOpened(bytes32 indexed positionId, address indexed owner, string marketId, uint256 baseQuantity, uint256 spotEntryPrice, uint256 perpEntryPrice, uint8 leverage, uint256 timestamp)
-      - event: HedgeRebalanced(bytes32 indexed positionId, uint256 oldSpotQty, uint256 newSpotQty, uint256 oldPerpQty, uint256 newPerpQty, string reason, uint256 timestamp)
-      - event: HedgeClosed(bytes32 indexed positionId, int256 realizedPnl, string reason, uint256 timestamp)
-      - event: GuardTriggered(bytes32 indexed positionId, uint8 tier, uint256 marginRatioBps, string action, uint256 timestamp)
+      - event: HedgeOpened(bytes32 indexed positionId, address indexed owner, bytes32 indexed marketId, uint256 baseQuantity, string spotTxRef, string perpOrderRef, uint256 leverage, uint256 timestamp)
+      - event: HedgeRebalanced(bytes32 indexed positionId, uint256 oldSpotQty, uint256 oldPerpQty, uint256 newSpotQty, uint256 newPerpQty, string reason, uint256 timestamp)
+      - event: HedgeClosed(bytes32 indexed positionId, address indexed owner, int256 realizedPnl, string reason, uint256 timestamp)
+      - event: GuardTriggered(bytes32 indexed positionId, uint8 indexed tier, uint256 marginRatioBps, string action, uint256 timestamp)
       - event: EmergencyUnwind(bytes32 indexed positionId, string reason, uint256 timestamp)
-      - event: PolicySet(address indexed user, uint8 maxLeverage, uint16 maxSlippageBps, uint16 fundingFloorBps, uint16 maxDriftBps)
+      - event: PolicySet(address indexed owner, uint256 maxLeverage, uint256 maxSlippageBps, int256 fundingFloorBps, uint256 maxDriftBps, uint256 reserveBufferBps, uint256 timestamp)
   - name: KuruOrderBook
     events:
-      - event: Trade(uint256 indexed orderId, address indexed maker, address indexed taker, bool isBuy, uint256 price, uint256 size, uint256 timestamp)
+      - event: Trade(uint64 indexed tradeId, address indexed taker, address indexed maker, uint64 size, uint64 price, bool isBuy)
 chains:
   - id: 10143
     rpc_config:

@@ -10,9 +10,11 @@ type Position @entity {
   owner: String! @index
   marketId: String!
   baseQuantity: BigInt!
-  spotEntryPrice: BigInt!
-  perpEntryPrice: BigInt!
-  leverage: Int!
+  spotQuantity: BigInt!
+  perpQuantity: BigInt!
+  spotTxRef: String!
+  perpOrderRef: String!
+  leverage: BigInt!
   state: PositionState!
   realizedPnl: BigInt
   openedAt: BigInt!
@@ -21,14 +23,16 @@ type Position @entity {
   guardEventCount: Int!
   rebalances: [RebalanceEvent!]! @derivedFrom(field: "position")
   guardEvents: [GuardEvent!]! @derivedFrom(field: "position")
+  driftSnapshots: [HedgeDriftPoint!]! @derivedFrom(field: "position")
+  marginSnapshots: [MarginRatioPoint!]! @derivedFrom(field: "position")
 }
 
 type RebalanceEvent @entity {
   id: ID!
   position: Position!
   oldSpotQty: BigInt!
-  newSpotQty: BigInt!
   oldPerpQty: BigInt!
+  newSpotQty: BigInt!
   newPerpQty: BigInt!
   reason: String!
   timestamp: BigInt!
@@ -45,22 +49,40 @@ type GuardEvent @entity {
   txHash: String!
 }
 
+type HedgeDriftPoint @entity {
+  id: ID!
+  position: Position!
+  driftBps: BigInt!
+  spotQty: BigInt!
+  perpQty: BigInt!
+  timestamp: BigInt!
+}
+
+type MarginRatioPoint @entity {
+  id: ID!
+  position: Position!
+  marginRatioBps: BigInt!
+  timestamp: BigInt!
+}
+
 type UserPolicy @entity {
   id: ID!
-  maxLeverage: Int!
-  maxSlippageBps: Int!
-  fundingFloorBps: Int!
-  maxDriftBps: Int!
+  maxLeverage: BigInt!
+  maxSlippageBps: BigInt!
+  fundingFloorBps: BigInt!
+  maxDriftBps: BigInt!
+  reserveBufferBps: BigInt!
   updatedAt: BigInt!
 }
 
 type SpotTradeFill @entity {
   id: ID!
-  user: String! @index
-  orderId: String!
-  quantity: BigInt!
+  tradeId: String!
+  taker: String! @index
+  maker: String!
+  size: BigInt!
   price: BigInt!
-  side: Int!
+  isBuy: Boolean!
   timestamp: BigInt!
   txHash: String!
 }

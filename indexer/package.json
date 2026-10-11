@@ -4,6 +4,7 @@
   "description": "Envio HyperIndex for Counter Yield protocol on Monad Testnet",
   "scripts": {
     "codegen": "envio codegen",
+    "build": "tsc",
     "dev": "envio dev",
     "start": "envio start"
   },
