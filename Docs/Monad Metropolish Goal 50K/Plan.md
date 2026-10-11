@@ -9,9 +9,11 @@
 ## Short Description: Problem & Solution
 
 ### The Problem
+
 Funding-rate counter yield is the premier market-neutral cash-flow strategy in DeFi, yet it is operationally hostile for regular users. Executing it manually requires managing two separate accounts across spot and perpetual venues, calculating hedge ratios, manual margin top-ups, navigating clunky Web3 wallets/seed phrases, and continuous 24/7 monitoring. When volatility hits, retail traders frequently get the hedge ratio wrong, miscalculate margin requirements, or suffer liquidation on the short leg (which destroys the hedge, inflicts liquidation penalties, and converts the position into naked spot risk).
 
 ### The Solution
+
 Counter Yield packages two-venue institutional basis trading into a mobile-native consumer primitive. Users sign in via biometrics (passkey via Mera, zero seed phrases) and deposit AUSD. With a single tap, Counter Yield executes an automated paired trade: buying spot on Kuru (fully onchain order book) and opening an equal-sized 1x short on Perpl (perpetual DEX). Net price exposure cancels to zero ($\Delta \approx 0$), capturing the continuous funding rate paid by perp longs. Counter Yield wraps this in an automated in-app Risk Guard (3-tier margin defense ladder + AUSD reserve buffer), logs verifiable proofs to an onchain CarryLedger contract, indexes position history via Envio HyperIndex, and provides a guaranteed 1-tap exit (Unwind).
 
 ---
@@ -34,6 +36,16 @@ Counter Yield packages two-venue institutional basis trading into a mobile-nativ
 ### 2. The Anti-Risk System: "The Risk Guard"
 
 The Risk Guard prevents short leg liquidation during upward price spikes through an escalating three-tier defense ladder:
+
+```mermaid
+flowchart TD
+    A["Normal Operation"] -- "Margin Ratio < 60%" --> B["Tier 1: Top-Up"]
+    B -- "Restored" --> A
+    B -- "Margin Ratio < 40%" --> C["Tier 2: Deleverage"]
+    C -- "Restored" --> A
+    C -- "Margin Ratio < 25%" --> D["Tier 3: Emergency Unwind"]
+    D --> E["100% AUSD Locked"]
+```
 
 ```text
 [Normal Operation] ──(Margin Ratio < 60%)──> [Tier 1: Top-Up] ──(Restored)──> [Normal]
@@ -223,6 +235,7 @@ Every block ($\approx 1$ second on Monad):
 ### Kill-Gate Criteria (Hours 0 to 2)
 
 Before building, immediately validate the 4 kill gates:
+
 1. **Market Overlap:** Confirm at least one identical token exists with active liquidity on both Kuru and Perpl.
 2. **Perpl Programmatic Access:** Confirm an EIP-712 trade-only key can be registered and successfully fetch mark price, margin ratio, and maintenance margin.
 3. **AUSD Liquidity:** Confirm real or testnet AUSD exists on the deployment network.
@@ -231,6 +244,7 @@ Before building, immediately validate the 4 kill gates:
 ### No-Code & Low-Code Rapid Prototyping Equivalents
 
 For non-developers, hackathon mentors, or rapid prototype builders:
+
 - **UI/UX Mockups & Interactive Demos:** Use v0.dev or Lovable.dev with prompt templates specifying: *"Dark-mode fintech mobile app with live delta-neutral indicator, 3-tier margin risk ladder, and AUSD balance counter"*.
 - **Workflow Automation & Keepers:** Use Make.com or n8n connected via Webhooks to Perpl REST APIs and Monad RPC nodes to run the 1-second margin check loop and trigger Discord/Telegram alerts.
 - **Indexer & API Prototyping:** Use Envio Cloud / Hosted Service or The Graph Studio with point-and-click contract ABI ingestion to auto-generate GraphQL endpoints without writing custom indexer code.
@@ -258,28 +272,34 @@ For non-developers, hackathon mentors, or rapid prototype builders:
 ## Final Deliverables
 
 ### Production Mobile Application (Expo / React Native)
+
 - Functional iOS/Android build running on a physical test device.
 - Mera passkey login with PRF credential encryption.
 - Real-time dashboard showing AUSD balance, net delta gauge, live APR, and 3-tier margin risk ladder.
 
 ### Verified Smart Contract (`CarryLedger.sol`)
+
 - Non-custodial Solidity contract deployed and verified on Monad Testnet/Mainnet.
 - Full test suite in Foundry (`forge test`) covering state transitions, access controls, and custom errors.
 
 ### Envio HyperIndex Indexer
+
 - Deployed indexer listening to CarryLedger and Kuru trade events.
 - Production GraphQL endpoint serving real-time position analytics and audit logs.
 
 ### Automated Strategy & Risk Guard Engine
+
 - TypeScript execution engine implementing IOC order routing, 3-second leg timeout fallbacks, and the 3-tier margin defense ladder.
 - Simulation stress harness replaying +25%, +45%, and +65% price spikes with simulated latency.
 
 ### Open Source GitHub Repository
+
 - Clean commit history spanning September 1 to October 13, 2026, with descriptive feature commits.
 - OSI-approved license (MIT).
 - Comprehensive `README.md` containing ASCII/Mermaid architecture diagrams, setup instructions, `.env.example`, verified contract addresses, and explorer links.
 - Auditable transaction log (`TX_LOG.md`) documenting all live onchain transactions.
 
 ### 3-Minute Demonstration Video
+
 - Crisp, unedited screen capture on a physical smartphone (Loom/YouTube/Vimeo).
 - Step-by-step walkthrough: Face ID onboarding → AUSD deposit → One-tap "Start Earning" entry → Live MonadScan transaction verification → Live Risk Guard drill → One-tap "Unwind".
