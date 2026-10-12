@@ -24,4 +24,7 @@ This file maintains an auditable, chronological record of all onchain transactio
 | 2026-10-12 17:46 | 10143 | Android Auto-Launcher | Full-Stack Scripts | `launch_android_test.bat` | VERIFIED | 1-click launcher with LAN IP auto-detection, ADB port forward, backend health check & Expo Go |
 | 2026-10-12 19:25 | 10143 | Spore UI & Biometrics Overhaul | Mobile Client | `mobile/src/` | VERIFIED | Multi-step onboarding, expo-local-authentication hardware biometrics, Spore dark & non-neon yellowish lime palette, live backend API binding |
 | 2026-10-12 19:50 | 10143 | 3-Step Educational Onboarding & Monadscan Feed | Mobile Client | `mobile/src/` | VERIFIED | 3-step system/DEXs/security flow, verified Monad Testnet explorer txs, dynamic localhost API resolution |
+| 2026-10-12 21:05 | 10143 | Perpl Block & SpotExecutor Redesign | Backend Engine | `backend/src/` | VERIFIED | Dynamic Monad RPC block number query (TTL valid at block ~70M); client-signed Kuru execution architecture |
+| 2026-10-12 21:08 | 10143 | WebCrypto PRF AES-256-GCM Vault & Unique Wallet | Mobile Auth | `mobile/src/auth/` | VERIFIED | True Web Crypto subtle AEAD cipher; unique 256-bit seed & Monad address per device; SecureStore/localStorage persistence |
+| 2026-10-12 21:30 | 10143 | DEX & Asset Vector Logos & WebSocket Telemetry | Mobile UI & Engine | `mobile/src/` | VERIFIED | Authentic Kuru, Perpl, Monad, and AUSD vector logos; live ws/telemetry hook with exponential backoff; real Monad RPC AUSD balance fetch |
 
