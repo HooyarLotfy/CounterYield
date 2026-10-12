@@ -190,7 +190,7 @@ export const HomeScreen: React.FC = () => {
               onPress={loadDemoTestingPreset}
             >
               <Text style={styles.presetButtonText}>
-                ⚡ Load Verified Testnet Position (Judges)
+                Load Verified Testnet Position (Judges)
               </Text>
             </TouchableOpacity>
           </View>

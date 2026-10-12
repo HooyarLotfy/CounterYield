@@ -410,7 +410,7 @@ export const WelcomeScreen: React.FC = () => {
                 activeOpacity={0.7}
                 onPress={handleLaunchVault}
               >
-                <Text style={styles.secondaryButtonText}>⚡ Quick Launch (Skip to Vault)</Text>
+                <Text style={styles.secondaryButtonText}>Quick Launch (Skip to Vault)</Text>
               </TouchableOpacity>
             </>
           )}
