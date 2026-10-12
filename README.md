@@ -168,14 +168,20 @@ npm --workspace=backend test
 npm --workspace=backend run dev
 ```
 
-### 3. Launch Mobile Client
-```bash
-cd mobile
-npm start
-# Press 'a' for Android, 'i' for iOS, or scan QR code in Expo Go
+### 3. Automated 1-Click Android & Full-Stack Launcher
+```cmd
+# Double click launch_android_test.bat or run from CLI:
+launch_android_test.bat
 ```
+This automated script:
+- Auto-detects your primary LAN IPv4 address (`192.168.8.11`).
+- Generates `mobile/.env` with live backend and deployed contract configurations.
+- Configures ADB port forwarding (`adb reverse tcp:4000 tcp:4000`) if an Android device/emulator is present.
+- Spawns and verifies the backend Fastify engine on port 4000.
+- Boots Expo Metro bundler with scannable QR code ready for instant **Expo Go** on physical Android phones, or opens on Android emulator (`a`) / web browser (`w`).
 
 ---
+
 
 ## 7. Metropolis Hackathon Bounty Stacking Alignment
 
