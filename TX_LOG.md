@@ -18,3 +18,4 @@ This file maintains an auditable, chronological record of all onchain transactio
 | 2026-10-12 13:40 | 10143 | Indexer Handlers | Envio HyperIndex | `indexer/src/EventHandlers.ts` | VERIFIED | Real-time indexing for CarryLedger & KuruOrderBook, GraphQL query layer |
 | 2026-10-12 13:50 | 10143 | Biometric Hardware Auth | Mera WebAuthn PRF | `mobile/src/auth/prfVault.ts` | VERIFIED | Hardware-isolated AES-GCM credential vault with zero wallet jargon |
 | 2026-10-12 13:55 | 10143 | Separation of Concerns | Custom React Hooks | `mobile/src/state/hooks/` | VERIFIED | usePosition, useKuruBook, useActivity decoupling dumb UI from network data |
+| 2026-10-12 16:03 | 10143 | Contract Deployment | CarryLedger.sol | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | VERIFIED | Tx: `0x3e49fe3afaf6a3a03d9bd310c71ec5a2f22758ea2f7ebb07baaff28f40b780b1`, block 70428320 |

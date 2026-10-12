@@ -19,9 +19,9 @@ chains:
   - id: 10143
     rpc_config:
       url: https://testnet-rpc.monad.xyz
-    start_block: 0
+    start_block: 70428320
     contracts:
       - name: CarryLedger
-        address: "0x0000000000000000000000000000000000000000"
+        address: "0x9998a7776edddf2f2ab6ffbb9420e5194a50f906"
       - name: KuruOrderBook
         address: "0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9"

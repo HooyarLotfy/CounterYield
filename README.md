@@ -106,7 +106,8 @@ Because Counter Yield holds spot and 1x short, a market rally causes the perp sh
 | **Kuru Market** | `0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9` | MON-USDC/AUSD orderbook |
 | **Perpl REST API**| `https://testnet.perpl.xyz/api` | Perpl trading API |
 | **Perpl Market** | `Market ID: 64` | MON Perpetual Market on Perpl |
-| **Declared Gas**| `411,000` (open), `57,000` (rebalance), `38,000` (guard) | Tight declared limits under Monad billing |
+| **CarryLedger**   | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | Onchain Non-Custodial Proof-of-Hedge Ledger |
+| **Declared Gas**  | `411,000` (open), `57,000` (rebalance), `38,000` (guard) | Tight declared limits under Monad billing |
 
 ---
 
