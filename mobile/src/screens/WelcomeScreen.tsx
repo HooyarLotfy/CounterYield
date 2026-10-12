@@ -12,6 +12,7 @@ import {
 import { useAppStore } from "../state/store";
 import { MeraAuthService, BiometricCapability } from "../auth/meraAuth";
 import { colors, radius, space } from "../theme";
+import { KuruLogo, PerplLogo, MonadLogo } from "../components/Logos";
 import {
   Zap,
   TrendingUp,
@@ -45,7 +46,7 @@ export const WelcomeScreen: React.FC = () => {
     label: "Face ID / Passkey",
     isWeb: Platform.OS === "web",
   });
-  const [vaultAddress] = useState<string>("0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+  const [vaultAddress, setVaultAddress] = useState<string>("");
 
   // Laptop Webcam Simulation state (Web only)
   const videoRef = useRef<any>(null);
@@ -56,6 +57,9 @@ export const WelcomeScreen: React.FC = () => {
   useEffect(() => {
     MeraAuthService.checkCapabilities().then((caps) => {
       setCapabilities(caps);
+    });
+    MeraAuthService.getOrCreateDeviceWallet().then((w) => {
+      setVaultAddress(w.address);
     });
   }, []);
 
@@ -243,8 +247,8 @@ export const WelcomeScreen: React.FC = () => {
               <View style={styles.cardList}>
                 {/* 1. Kuru CLOB */}
                 <View style={styles.explainCard}>
-                  <View style={[styles.cardIconBox, { backgroundColor: "rgba(255, 87, 34, 0.12)" }]}>
-                    <Text style={{ color: colors.kuruOrange, fontWeight: "800", fontSize: 16 }}>K</Text>
+                  <View style={[styles.cardIconBox, { backgroundColor: "transparent" }]}>
+                    <KuruLogo size={32} />
                   </View>
                   <View style={styles.cardContent}>
                     <View style={styles.badgeRow}>
@@ -261,8 +265,8 @@ export const WelcomeScreen: React.FC = () => {
 
                 {/* 2. Perpl DEX */}
                 <View style={styles.explainCard}>
-                  <View style={[styles.cardIconBox, { backgroundColor: "rgba(131, 110, 249, 0.12)" }]}>
-                    <Text style={{ color: colors.monadViolet, fontWeight: "800", fontSize: 16 }}>P</Text>
+                  <View style={[styles.cardIconBox, { backgroundColor: "transparent" }]}>
+                    <PerplLogo size={32} />
                   </View>
                   <View style={styles.cardContent}>
                     <View style={styles.badgeRow}>
@@ -368,12 +372,12 @@ export const WelcomeScreen: React.FC = () => {
                     <CheckCircle2 size={18} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>Provisioned Monad Account</Text>
+                    <Text style={styles.cardTitle}>Hardware-Derived Monad Account</Text>
                     <Text style={styles.cardAddress}>
-                      {vaultAddress.slice(0, 10)}...{vaultAddress.slice(-8)}
+                      {vaultAddress ? `${vaultAddress.slice(0, 8)}...${vaultAddress.slice(-6)}` : "Deriving keypair..."}
                     </Text>
                     <Text style={styles.cardBody}>
-                      Connected to Monad Testnet (Chain ID 10143) with $1,000.00 AUSD testnet balance.
+                      Monad Testnet (Chain 10143) · Hardware-isolated key derived deterministically via WebAuthn PRF.
                     </Text>
                   </View>
                 </View>

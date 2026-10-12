@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { useBackendHealth } from "../services/useBackendData";
+import { useTelemetry } from "../services/useTelemetry";
 import { colors, radius, space } from "../theme";
+import { KuruLogo, PerplLogo, AusdLogo, MonadLogo } from "../components/Logos";
 import {
   Shield,
   Zap,
@@ -38,6 +40,7 @@ export const HomeScreen: React.FC = () => {
   } = useAppStore();
 
   const { blockNumber, rpcLatencyMs, isConnected } = useBackendHealth();
+  const { isConnected: isWsConnected } = useTelemetry(activePosition?.positionId || null);
 
   const formattedAddress = userAddress
     ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
@@ -209,8 +212,8 @@ export const HomeScreen: React.FC = () => {
                 activeOpacity={0.75}
                 onPress={() => setActiveTab("spot")}
               >
-                <View style={[styles.assetAvatar, { backgroundColor: "rgba(255, 87, 34, 0.12)" }]}>
-                  <Text style={[styles.assetAvatarText, { color: colors.kuruOrange }]}>K</Text>
+                <View style={styles.assetAvatar}>
+                  <KuruLogo size={32} />
                 </View>
                 <View style={styles.assetMeta}>
                   <Text style={styles.assetName}>MON Spot Long</Text>
@@ -234,8 +237,8 @@ export const HomeScreen: React.FC = () => {
                 activeOpacity={0.75}
                 onPress={() => openRiskGuardModal(true)}
               >
-                <View style={[styles.assetAvatar, { backgroundColor: "rgba(131, 110, 249, 0.12)" }]}>
-                  <Text style={[styles.assetAvatarText, { color: colors.monadViolet }]}>P</Text>
+                <View style={styles.assetAvatar}>
+                  <PerplLogo size={32} />
                 </View>
                 <View style={styles.assetMeta}>
                   <Text style={styles.assetName}>MON Perp 1x Short</Text>
@@ -255,8 +258,8 @@ export const HomeScreen: React.FC = () => {
 
               {/* Row 3: 10% Reserve Buffer */}
               <View style={styles.assetRow}>
-                <View style={[styles.assetAvatar, { backgroundColor: colors.limeSoft }]}>
-                  <Shield size={16} color={colors.lime} strokeWidth={2.4} />
+                <View style={styles.assetAvatar}>
+                  <AusdLogo size={32} />
                 </View>
                 <View style={styles.assetMeta}>
                   <Text style={styles.assetName}>Reserve Buffer (10%)</Text>
@@ -275,11 +278,20 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Live RPC & Block Status Strip */}
+        {/* Live RPC, WebSocket & Block Status Strip */}
         <View style={styles.telemetryStrip}>
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: isWsConnected ? colors.lime : colors.amber,
+              marginRight: 4,
+            }}
+          />
           <Activity size={12} color={colors.textTertiary} strokeWidth={2} />
           <Text style={styles.telemetryText}>
-            Monad Block #{blockNumber} · RPC {rpcLatencyMs}ms · Chain 10143
+            {isWsConnected ? "WS Live" : "Polling"} · Block #{blockNumber} · RPC {rpcLatencyMs}ms · Chain 10143
           </Text>
         </View>
 

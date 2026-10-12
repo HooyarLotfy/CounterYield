@@ -27,7 +27,7 @@ const WS_MAX_RECONNECTS = 10;
  * Automatically reconnects on disconnect with exponential backoff (up to 10 retries).
  */
 export function useTelemetryWebSocket(positionId: string | null | undefined) {
-  const { applyTelemetryUpdate, setWsConnected } = useAppStore();
+  const { applyTelemetryUpdate, setWsConnected, wsConnected } = useAppStore();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectCountRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,4 +117,8 @@ export function useTelemetryWebSocket(positionId: string | null | undefined) {
       setWsConnected(false);
     };
   }, [positionId, connect]);
+
+  return { isConnected: wsConnected };
 }
+
+export { useTelemetryWebSocket as useTelemetry };

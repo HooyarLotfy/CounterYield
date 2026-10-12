@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useKuruBook } from "../state/hooks/useKuruBook";
 import { colors, radius, space } from "../theme";
+import { KuruLogo } from "../components/Logos";
 import {
   ArrowLeftRight,
   TrendingUp,
@@ -43,7 +44,10 @@ export const SpotScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <Text style={styles.screenTitle}>Kuru Spot CLOB</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <KuruLogo size={28} />
+            <Text style={styles.screenTitle}>Kuru Spot CLOB</Text>
+          </View>
           <View style={styles.pairBadge}>
             <Text style={styles.pairBadgeText}>MON / AUSD</Text>
           </View>

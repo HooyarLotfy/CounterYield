@@ -13,6 +13,7 @@ import {
 import { useAppStore } from "../state/store";
 import { useLiveQuote, useStrategyExecution } from "../services/useBackendData";
 import { colors, radius, space } from "../theme";
+import { KuruLogo, PerplLogo, AusdLogo } from "../components/Logos";
 import {
   Zap,
   Shield,
@@ -35,10 +36,17 @@ export const StartEarningScreen: React.FC = () => {
   const spotAlloc = activeCapital / 2;
   const perpAlloc = activeCapital / 2;
 
-  // Round-trip taker fees & carry calculation
-  const roundTripCost = numericDeposit * 0.002;
-  const dailyCarry = (numericDeposit * 0.184) / 365;
-  const breakEvenDays = dailyCarry > 0 ? (roundTripCost / dailyCarry).toFixed(1) : "0.0";
+  // Round-trip taker fees & carry calculation using live quote if available
+  const apr = quote?.telemetry?.netEstimatedApr ?? 0.184;
+  const roundTripCost = quote?.telemetry?.roundTripFeePercent
+    ? (numericDeposit * quote.telemetry.roundTripFeePercent) / 100
+    : numericDeposit * 0.002;
+  const dailyCarry = (numericDeposit * apr) / 365;
+  const breakEvenDays = quote?.telemetry?.estimatedBreakEvenDays
+    ? quote.telemetry.estimatedBreakEvenDays.toFixed(1)
+    : dailyCarry > 0
+    ? (roundTripCost / dailyCarry).toFixed(1)
+    : "0.0";
 
   const handleStartEarning = async () => {
     if (numericDeposit <= 0) return;
@@ -136,7 +144,9 @@ export const StartEarningScreen: React.FC = () => {
           {/* 10% Reserve */}
           <View style={styles.allocRow}>
             <View style={styles.allocLeft}>
-              <View style={[styles.allocDot, { backgroundColor: colors.lime }]} />
+              <View style={{ marginRight: 10 }}>
+                <AusdLogo size={24} />
+              </View>
               <View>
                 <Text style={styles.allocTitle}>10% Reserve Buffer</Text>
                 <Text style={styles.allocDesc}>Liquidation & margin buffer</Text>
@@ -150,7 +160,9 @@ export const StartEarningScreen: React.FC = () => {
           {/* Kuru Spot */}
           <View style={styles.allocRow}>
             <View style={styles.allocLeft}>
-              <View style={[styles.allocDot, { backgroundColor: colors.kuruOrange }]} />
+              <View style={{ marginRight: 10 }}>
+                <KuruLogo size={24} />
+              </View>
               <View>
                 <Text style={styles.allocTitle}>Kuru Spot MON (Long)</Text>
                 <Text style={styles.allocDesc}>Spot asset allocation (45%)</Text>
@@ -164,7 +176,9 @@ export const StartEarningScreen: React.FC = () => {
           {/* Perpl Short */}
           <View style={styles.allocRow}>
             <View style={styles.allocLeft}>
-              <View style={[styles.allocDot, { backgroundColor: colors.monadViolet }]} />
+              <View style={{ marginRight: 10 }}>
+                <PerplLogo size={24} />
+              </View>
               <View>
                 <Text style={styles.allocTitle}>Perpl 1x Short (Market 64)</Text>
                 <Text style={styles.allocDesc}>Delta-neutral hedge (45%)</Text>

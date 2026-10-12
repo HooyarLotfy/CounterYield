@@ -50,8 +50,11 @@ export function useKuruBook(pollingIntervalMs: number = 2500) {
           error: null,
         });
       }
-    } catch {
-      // Use fallback smoothly if backend is offline
+    } catch (err: any) {
+      setBookData((prev) => ({
+        ...prev,
+        error: "Offline Testnet Snapshot",
+      }));
     }
   }, []);
 

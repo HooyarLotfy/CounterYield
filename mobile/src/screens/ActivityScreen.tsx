@@ -61,65 +61,75 @@ export const ActivityScreen: React.FC = () => {
           Live Monad Testnet audit log · Click any transaction to view on Monadscan.
         </Text>
 
-        {activities.map((act) => {
-          const isUnwind = act.type === "UNWIND";
-          const isHedge = act.type === "OPEN_HEDGE";
-          const isDeploy = act.type === "DEPLOY";
+        {activities.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Shield size={28} color={colors.textTertiary} strokeWidth={2} style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyTitle}>No Recorded Transactions</Text>
+            <Text style={styles.emptySubtitle}>
+              Open a delta-neutral hedge position in the Earn tab to log verified onchain executions.
+            </Text>
+          </View>
+        ) : (
+          activities.map((act) => {
+            const isUnwind = act.type === "UNWIND";
+            const isHedge = act.type === "OPEN_HEDGE";
+            const isDeploy = act.type === "DEPLOY";
 
-          return (
-            <TouchableOpacity
-              key={act.id}
-              style={styles.activityCard}
-              activeOpacity={0.8}
-              onPress={() => handleOpenExplorer(act.txHash)}
-            >
-              <View style={styles.activityHeader}>
-                <View
-                  style={[
-                    styles.typePill,
-                    isUnwind
-                      ? styles.pillCrimson
-                      : isHedge
-                      ? styles.pillLime
-                      : isDeploy
-                      ? styles.pillViolet
-                      : styles.pillDefault,
-                  ]}
-                >
-                  <Text
+            return (
+              <TouchableOpacity
+                key={act.id}
+                style={styles.activityCard}
+                activeOpacity={0.8}
+                onPress={() => handleOpenExplorer(act.txHash)}
+              >
+                <View style={styles.activityHeader}>
+                  <View
                     style={[
-                      styles.typeText,
-                      isHedge ? styles.typeTextDark : styles.typeTextLight,
+                      styles.typePill,
+                      isUnwind
+                        ? styles.pillCrimson
+                        : isHedge
+                        ? styles.pillLime
+                        : isDeploy
+                        ? styles.pillViolet
+                        : styles.pillDefault,
                     ]}
                   >
-                    {act.type}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.typeText,
+                        isHedge ? styles.typeTextDark : styles.typeTextLight,
+                      ]}
+                    >
+                      {act.type}
+                    </Text>
+                  </View>
+                  <Text style={styles.timestampText}>{act.timestamp}</Text>
                 </View>
-                <Text style={styles.timestampText}>{act.timestamp}</Text>
-              </View>
 
-              <Text style={styles.activityTitle}>{act.title}</Text>
+                <Text style={styles.activityTitle}>{act.title}</Text>
 
-              <View style={styles.activityFooter}>
-                <Text
-                  style={[
-                    styles.amountText,
-                    act.isPositive ? styles.amountPositive : styles.amountNeutral,
-                  ]}
-                >
-                  {act.amount}
-                </Text>
-
-                <View style={styles.txHashRow}>
-                  <Text style={styles.txHashText}>
-                    {act.txHash.slice(0, 8)}...{act.txHash.slice(-6)}
+                <View style={styles.activityFooter}>
+                  <Text
+                    style={[
+                      styles.amountText,
+                      act.isPositive ? styles.amountPositive : styles.amountNeutral,
+                    ]}
+                  >
+                    {act.amount}
                   </Text>
-                  <ExternalLink size={12} color={colors.lime} style={{ marginLeft: 5 }} />
+
+                  <View style={styles.txHashRow}>
+                    <Text style={styles.txHashText}>
+                      {act.txHash.slice(0, 8)}...{act.txHash.slice(-6)}
+                    </Text>
+                    <ExternalLink size={12} color={colors.lime} style={{ marginLeft: 5 }} />
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         <View style={{ height: 110 }} />
       </ScrollView>
@@ -253,5 +263,28 @@ const styles = StyleSheet.create({
     color: colors.lime,
     fontSize: 11,
     fontWeight: "600",
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: space.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: space.lg,
+  },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: space.xs,
+  },
+  emptySubtitle: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: space.sm,
   },
 });
