@@ -1,216 +1,159 @@
-# Counter Yield
+# CounterYield
 
 <div align="center">
-  <h3>Mobile-Native Delta-Neutral Dollar Yield on Monad (`chainId: 10143`)</h3>
+  <h3>One-Tap Delta-Neutral Dollar Yield on Monad</h3>
   <p><strong>Monad Metropolis Hackathon — Track 01: Onchain Finance & Trading</strong></p>
 
   <p>
     <img src="https://img.shields.io/badge/Monad%20Testnet-Chain%2010143-836EF9?style=for-the-badge&logo=ethereum" alt="Monad Testnet" />
-    <img src="https://img.shields.io/badge/Agora-AUSD%20Native-00D26A?style=for-the-badge" alt="Agora AUSD" />
-    <img src="https://img.shields.io/badge/Kuru-CLOB%20Spot-FF5722?style=for-the-badge" alt="Kuru CLOB" />
-    <img src="https://img.shields.io/badge/Perpl-Perp%20DEX%20(Mkt%2064)-00E5FF?style=for-the-badge" alt="Perpl DEX" />
-    <img src="https://img.shields.io/badge/Mera-WebAuthn%20PRF-CCFF00?style=for-the-badge" alt="Mera PRF" />
-    <img src="https://img.shields.io/badge/Envio-HyperIndex-FF007A?style=for-the-badge" alt="Envio" />
+    <img src="https://img.shields.io/badge/Agora-AUSD%20Native-059669?style=for-the-badge" alt="Agora AUSD" />
+    <img src="https://img.shields.io/badge/Kuru-Spot%20CLOB-FF5722?style=for-the-badge" alt="Kuru CLOB" />
+    <img src="https://img.shields.io/badge/Perpl-Perp%20DEX-836EF9?style=for-the-badge" alt="Perpl DEX" />
+    <img src="https://img.shields.io/badge/Biometrics-Face%20ID%20%2F%20Passkey-9FE825?style=for-the-badge" alt="Biometrics" />
   </p>
 </div>
 
 ---
 
-## 1. What is Counter Yield?
+## What is CounterYield?
 
-Counter Yield is a consumer-grade, non-custodial mobile primitive that packages institutional cash-and-carry funding arbitrage into a single tap. 
+When crypto traders use leverage on perpetual exchanges, they pay an ongoing funding rate to keep their positions open. Professional trading desks earn steady profits by collecting these funding fees without taking price risk: they buy spot crypto and short the exact same amount on perpetuals.
 
-By executing a synchronized paired trade—buying spot on **Kuru** (fully onchain central limit order book) and opening an equal-sized 1x short on **Perpl** (perpetual DEX Market ID 64)—the user's net price exposure cancels to zero ($\Delta \approx \$0.00$), capturing the continuous 8-hour funding rate paid by perp long traders directly into **Agora USD (AUSD)**.
+**CounterYield brings this institutional cash-and-carry strategy to everyday users in a single tap on mobile.**
 
-Counter Yield wraps this in:
-1. **Automated 3-Tier Risk Guard**: An in-app margin defense ladder backed by a 10% AUSD reserve buffer that absorbs adverse price shocks without exchange liquidation.
-2. **Hardware-Isolated PRF Vault**: Built with `@category-labs/mera`, securing trade-only session keys inside the device's Secure Enclave / TPM with Face ID and zero seed phrases.
-3. **Auditable CarryLedger**: A non-custodial Solidity smart contract on Monad Testnet that logs verifiable proof of hedge, rebalance events, and risk actions without taking custody of user capital.
-4. **Envio HyperIndex**: Real-time event streaming and GraphQL indexing for sub-second position telemetry and audit logs.
-5. **Modern Trust Wallet-Inspired UX**: Floating frosted glass navigation, light yellowish-green (`#CCFF00`) and dark charcoal (`#0A0D14`) palette, and a guaranteed 1-Tap Unwind mechanism.
+Deposit Agora USD (**AUSD**), and CounterYield automatically:
+1. Buys spot MON on **Kuru** (Monad's high-speed on-chain orderbook).
+2. Opens an equal 1x short hedge on **Perpl** (Monad's perpetual futures exchange).
+
+Because your long and short positions cancel each other out, **your price exposure is zero ($\Delta \approx \$0.00$)**. Whether MON doubles or drops 80%, your dollar principal stays protected while continuously collecting ~**18.4% APY** in funding payments.
 
 ---
 
-## 2. Architecture & Data Flow
+## How It Works
 
-```mermaid
-graph TD
-    subgraph MobileClient ["Mobile Client (Expo SDK 52 / React Native)"]
-        UI_Home["Home Screen<br/>(Balance, Net Delta, Live APR, Leg Breakdown)"]
-        UI_Earn["Earn Screen<br/>(Capital Sizer, 10% Reserve Buffer, Break-Even)"]
-        UI_Spot["Spot Screen<br/>(Live Kuru CLOB Orderbook & Direct Trading)"]
-        UI_Activity["Activity Screen<br/>(Envio HyperIndex GraphQL Audit Feed)"]
-        UI_Guard["Position & Risk Guard Screen<br/>(3-Tier Margin Defense Ladder)"]
-        MeraVault["Mera WebAuthn PRF Vault<br/>(Biometric Hardware Decryption)"]
-    end
-
-    subgraph BackendGateway ["Counter Yield Engine (:4000)"]
-        FastifyREST["Fastify REST API<br/>(/quote, /enter, /position, /unwind)"]
-        WSTelemetry["WebSocket Gateway<br/>(/ws/telemetry)"]
-        StrategyEngine["Dual-Leg Sizing & Routing Engine<br/>(Perpl IOC -> Kuru Spot)"]
-        RiskDaemon["Risk Guard Daemon<br/>(1s block loop defense)"]
-    end
-
-    subgraph MonadVenues ["Monad Testnet Protocol Venues (10143)"]
-        Agora["Agora AUSD ERC-20<br/>0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a"]
-        KuruCLOB["Kuru CLOB Router<br/>0x7EFbE105Ca7415dE98F96622173458ac1c054630"]
-        PerplDEX["Perpl DEX (Market ID 64)<br/>https://testnet.perpl.xyz/api"]
-        CarryLedger["CarryLedger.sol<br/>Audit & Proof-of-Hedge"]
-    end
-
-    subgraph IndexerLayer ["Envio HyperIndex Layer"]
-        EnvioGraphQL["Envio HyperIndex Engine<br/>(GraphQL Subgraphs)"]
-    end
-
-    MeraVault -->|Decrypted Ed25519 Session| StrategyEngine
-    UI_Home --> FastifyREST
-    UI_Earn --> FastifyREST
-    UI_Spot --> FastifyREST
-    UI_Activity --> EnvioGraphQL
-    UI_Guard --> FastifyREST
-    FastifyREST --> StrategyEngine
-    StrategyEngine --> KuruCLOB
-    StrategyEngine --> PerplDEX
-    StrategyEngine --> CarryLedger
-    RiskDaemon --> CarryLedger
-    RiskDaemon --> PerplDEX
-    RiskDaemon --> KuruCLOB
-    CarryLedger --> EnvioGraphQL
-    KuruCLOB --> EnvioGraphQL
+```
+              ┌──────────────────────────────────────────────┐
+              │             User Deposits $1,000 AUSD        │
+              └──────────────────────┬───────────────────────┘
+                                     │
+         ┌───────────────────────────┼───────────────────────────┐
+         │                           │                           │
+         ▼                           ▼                           ▼
+  $100 AUSD (10%)             $450 AUSD (45%)             $450 AUSD (45%)
+ ┌───────────────┐           ┌───────────────┐           ┌───────────────┐
+ │ Reserve Buffer│           │  Kuru Spot    │           │  Perpl Perp   │
+ │ (Emergency    │           │  Buy MON      │           │  1x Short MON │
+ │  Protection)  │           │ (Spot Long)   │           │ (Hedge Short) │
+ └───────────────┘           └───────┬───────┘           └───────┬───────┘
+                                     │                           │
+                                     └─────────────┬─────────────┘
+                                                   │
+                                                   ▼
+                                         Net Delta = $0.00
+                                       (Zero Market Exposure)
+                                                   │
+                                                   ▼
+                                         Earn ~18.4% APY
+                                      Continuous Funding Yield
 ```
 
 ---
 
-## 3. The 3-Tier Risk Guard Margin Defense Ladder
+## Key Features
 
-Because Counter Yield holds spot and 1x short, a market rally causes the perp short's margin ratio to decrease while the spot holding appreciates equally in dollar value. To defend against liquidation:
-
-| Tier | Margin Ratio | Mechanism & Action | Result |
-| :--- | :--- | :--- | :--- |
-| **Tier 1: Top-Up** | `60% - 40%` | Automatically draws unencumbered AUSD from the user's dedicated 10% reserve buffer and deposits margin into Perpl. | Preserves 100% position size without selling spot. |
-| **Tier 2: Deleverage** | `40% - 25%` | Reserve depleted. Atomically sells 20% of spot MON on Kuru and closes 20% of Perpl short via reduce-only IOC. | Restores margin ratio above 100%. |
-| **Tier 3: Emergency Unwind** | `< 25%` (2 blocks) | Confirmed across 2 consecutive blocks below 25%. Fully liquidates remaining spot on Kuru and closes short on Perpl to 100% AUSD. | Zero exchange liquidation penalty, zero bad debt. |
+- **⚡ 1-Tap Entry & 1-Tap Exit**: Open a fully hedged position in one tap. Unwind anytime to convert everything back to 100% AUSD.
+- **🛡️ Automated Risk Guard**: Protects your perp short during sudden market rallies with a 10% reserve buffer and a 3-tier defense ladder (top-up, deleverage, or emergency unwind before liquidation can ever happen).
+- **🔐 Face ID & Touch ID Wallet**: No seed phrases, paper backups, or browser extensions. Your wallet keys are generated locally inside your device's hardware Secure Enclave using WebAuthn PRF and AES-256-GCM encryption.
+- **📊 Real-Time Telemetry**: Live WebSocket connection to the backend and Monad testnet RPC for instant mark prices, margin ratios, and funding accruals.
+- **📜 Auditable On-Chain Ledger**: Every hedge open, rebalance, and risk action logs verifiable proofs to `CarryLedger.sol` on Monad without locking your custody.
+- **🎨 Elite Mobile Interface**: Clean Uniswap Spore-inspired dark charcoal theme (`#131313`), calibrated non-neon lime accents (`#9FE825`), and authentic vector logos for Kuru, Perpl, Monad, and AUSD.
 
 ---
 
-## 4. Verified Protocol Addresses & Monad Testnet Endpoints
+## The 3-Tier Risk Guard System
+
+If MON rallies quickly, your spot holding increases in value while your perp short requires more margin. The automated Risk Guard prevents exchange liquidation:
+
+| Tier | Margin Ratio | What Happens | Result |
+| :--- | :--- | :--- | :--- |
+| **Normal** | $\ge 60\%$ | Normal monitoring on every block. | Position healthy. |
+| **Tier 1: Top-Up** | $60\% - 40\%$ | Automatically moves cash from your 10% AUSD reserve buffer into margin. | Restores margin ratio without selling any assets. |
+| **Tier 2: Deleverage** | $40\% - 25\%$ | If buffer is used, sells 20% of spot MON on Kuru and closes 20% of the short. | Restores margin ratio above 100%. |
+| **Tier 3: Emergency Unwind** | $< 25\%$ (2 blocks) | Closes the short and liquidates spot on Kuru to 100% cash. | Zero liquidation penalty, capital fully protected. |
+
+---
+
+## Monad Testnet Deployments
 
 | Resource | Value / Contract Address | Description |
 | :--- | :--- | :--- |
-| **Network Name** | Monad Testnet | Official Monad Testnet |
-| **Chain ID** | `10143` (`0x279f`) | Monad EVM execution chain |
-| **Primary RPC** | `https://testnet-rpc.monad.xyz` | Official Monad RPC |
-| **Block Explorer**| `https://testnet.monadscan.com` | MonadScan Testnet Explorer |
-| **Agora AUSD** | `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a` | Canonical testnet stablecoin contract |
-| **Kuru Router** | `0x7EFbE105Ca7415dE98F96622173458ac1c054630` | Official Kuru CLOB testnet router |
-| **Kuru Market** | `0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9` | MON-USDC/AUSD orderbook |
-| **Perpl REST API**| `https://testnet.perpl.xyz/api` | Perpl trading API |
-| **Perpl Market** | `Market ID: 64` | MON Perpetual Market on Perpl |
-| **CarryLedger**   | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | Onchain Non-Custodial Proof-of-Hedge Ledger |
-| **Declared Gas**  | `411,000` (open), `57,000` (rebalance), `38,000` (guard) | Tight declared limits under Monad billing |
+| **Network** | Monad Testnet | Chain ID: `10143` (`0x279f`) |
+| **RPC URL** | `https://testnet-rpc.monad.xyz` | Official Monad RPC |
+| **Explorer** | [testnet.monadscan.com](https://testnet.monadscan.com) | MonadScan Explorer |
+| **Agora AUSD** | `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a` | Canonical Testnet Stablecoin |
+| **CarryLedger** | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | Non-Custodial Proof-of-Hedge Contract |
+| **Kuru Router** | `0x7EFbE105Ca7415dE98F96622173458ac1c054630` | Spot Orderbook Router |
+| **Perpl Market** | Market ID: `64` | MON Perpetual Market on Perpl |
 
 ---
 
-## 5. Monorepo Structure
+## Monorepo Layout
 
-```text
-├── contracts/               # Foundry Smart Contracts
-│   ├── src/CarryLedger.sol  # Non-custodial proof-of-hedge audit ledger
-│   ├── test/                # 8/8 Foundry unit tests passing
-│   └── script/              # Deployment and gas benchmark scripts
-├── backend/                 # Strategy Engine & Risk Guard Daemon
-│   ├── src/clients/         # Viem Monad, Kuru CLOB, and Perpl DEX clients
-│   ├── src/strategy/        # Coordinated entry, rebalance, & unwind engines
-│   ├── src/risk/            # 3-Tier Risk Guard daemon
-│   ├── src/api/             # Fastify REST endpoints & WebSocket gateway
-│   └── src/test/            # 15/15 unit and stress harness suites passing
-├── indexer/                 # Envio HyperIndex Subgraph
-│   ├── config.yaml          # CarryLedger & Kuru contract event bindings
-│   ├── schema.graphql       # Positions, GuardEvents, and DriftPoints schema
-│   └── src/EventHandlers.ts # Real-time event ingestion handlers
-├── mobile/                  # Expo SDK 52 / React Native Client
-│   ├── src/auth/            # Mera WebAuthn PRF hardware-isolated vault
-│   ├── src/screens/         # Welcome, Home, Earn, Position, Spot, Activity
-│   ├── src/components/      # Trust Wallet floating nav, Unwind modal
-│   ├── src/state/hooks/     # usePosition, useKuruBook, useActivity
-│   └── src/theme.ts         # Chartreuse (#CCFF00) & dark charcoal design system
-├── Docs/                    # Master Implementation Plan & Hackathon Specs
-└── TX_LOG.md                # Auditable deployment and transaction log
+```
+├── mobile/       # Expo / React Native consumer mobile application
+├── backend/      # Dual-leg execution engine, WebSocket server, & Risk Guard daemon
+├── contracts/    # CarryLedger.sol Foundry smart contracts & benchmarks
+├── indexer/      # Envio HyperIndex GraphQL indexing layer
+├── shared/       # Shared models, mathematical calculators, and types
+├── Docs/         # Metropolis Hackathon specifications and design notes
+└── TX_LOG.md     # Auditable log of all on-chain transactions and deployments
 ```
 
 ---
 
-## 6. Getting Started
+## Getting Started
 
 ### Prerequisites
-- Node.js `v20+` or `v24+`
-- Foundry (`forge`, `cast`)
-- Expo CLI (`npx expo`)
+- Node.js `v20+` or `v22+`
+- npm `v10+`
 
-### 1. Build All Packages
+### 1. Install Dependencies
 ```bash
-# Build shared models & ABIs
-npm run --prefix shared build
-
-# Build backend services
-npm run --prefix backend build
-
-# Build Envio indexer
-npm run --prefix indexer build
+npm install
 ```
 
-### 2. Run Backend Engine & Stress Harness
+### 2. Run Backend Engine
 ```bash
-# Run unit & stress tests (15/15 passing)
-npm --workspace=backend test
-
-# Start the local development server (REST :4000 + WS)
-npm --workspace=backend run dev
+npm --prefix backend run dev
 ```
+The Fastify REST API and WebSocket telemetry service will start on `http://localhost:4000`.
 
-### 3. Automated 1-Click Android & Full-Stack Launcher
-```cmd
-# Double click launch_android_test.bat or run from CLI:
-launch_android_test.bat
+### 3. Run Backend Tests
+```bash
+npm --prefix backend test
 ```
-This automated script:
-- Auto-detects your primary LAN IPv4 address (`192.168.8.11`).
-- Generates `mobile/.env` with live backend and deployed contract configurations.
-- Configures ADB port forwarding (`adb reverse tcp:4000 tcp:4000`) if an Android device/emulator is present.
-- Spawns and verifies the backend Fastify engine on port 4000.
-- Boots Expo Metro bundler with scannable QR code ready for instant **Expo Go** on physical Android phones, or opens on Android emulator (`a`) / web browser (`w`).
+Runs the full 15-test unit, stress harness, and risk ladder suite.
+
+### 4. Run Mobile App
+```bash
+npm --prefix mobile start
+```
+- Press `w` to open in your desktop web browser with webcam Face ID support.
+- Or scan the QR code with **Expo Go** on your iOS or Android device.
 
 ---
 
+## Hackathon Bounty Tracks
 
-## 7. Metropolis Hackathon Bounty Stacking Alignment
-
-| Track / Sponsor | Bounty | How Counter Yield Fulfills It |
-| :--- | :--- | :--- |
-| **Track 01: Onchain Finance & Trading** | Grand Prize ($10k - $25k) | Production-grade delta-neutral dollar yield primitive capturing funding rates automatically on Monad. |
-| **Agora** | $10,000 | Consumer mobile app denominated 100% in AUSD, routing collateral to Perpl and Kuru. |
-| **Kuru** | $5,000 | Deep integration with Kuru CLOB via Viem (`placeAndExecuteMarketBuy/Sell`) plus dedicated in-app spot orderbook viewer. |
-| **Perpl** | $5,000 | Automated short hedging on Market ID 64 with Ed25519 signing, IOC limit orders, and fallback unwinds. |
-| **Monad Mera UX** | $2,500 | Frictionless biometric Face ID login with zero seed phrases or wallet jargon. |
-| **Monad PRF** | $2,500 | Hardware-isolated PRF credential vault encrypting sensitive session keys in device Secure Enclave. |
-| **Envio** | $1,000 | HyperIndex GraphQL schema indexing CarryLedger proof-of-hedge and 3-tier risk guard telemetry. |
-
----
-
-## 8. Remaining Manual Submission Steps (Phase 6)
-
-1. **Testnet Gas & Collateral**:
-   - Request testnet MON from [faucet.monad.xyz](https://faucet.monad.xyz).
-   - Mint testnet AUSD from the Agora contract (`0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`).
-2. **Deploy `CarryLedger.sol`**:
-   - Run `forge script contracts/script/DeployCarryLedger.s.sol --rpc-url https://testnet-rpc.monad.xyz --broadcast --private-key $DEPLOYER_KEY`.
-   - Update `indexer/config.yaml` and `mobile/.env` with the deployed address.
-3. **Record 3-Minute Demo**:
-   - Record an unedited walkthrough on a smartphone showing Face ID login, deposit, 1-tap entry, Kuru orderbook, Risk Guard monitor, and 1-tap Unwind.
-4. **Submit Portal Application**:
-   - Submit project repo, demo video, and `TX_LOG.md` on the Monad Metropolis Hackathon portal.
+- **Track 01: Onchain Finance & Trading** — Full consumer delta-neutral funding yield primitive built natively on Monad.
+- **Agora Bounty** — 100% denominated in native AUSD for deposits, margin, and reserve buffers.
+- **Kuru Bounty** — Deep integration with Kuru CLOB router plus in-app spot orderbook viewer.
+- **Perpl Bounty** — Coordinated dual-leg short hedging on Market 64 with IOC orders.
+- **Monad UX / PRF** — Passkey Face ID & Touch ID authentication with hardware-isolated AES-256-GCM vault via WebAuthn PRF.
+- **Envio Bounty** — Real-time GraphQL indexing for CarryLedger events.
 
 ---
 
 ## License
-MIT © 2026 Counter Yield Team
+
+MIT © 2026 CounterYield Team
