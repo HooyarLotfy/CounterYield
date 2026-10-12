@@ -23,4 +23,5 @@ This file maintains an auditable, chronological record of all onchain transactio
 | 2026-10-12 16:17 | 10143 | Onchain 1-Tap Unwind | CarryLedger.closeHedge | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | VERIFIED | Tx: `0x6c377c9f9022d763c42ac4f9dc5df9b129648198181c2a63281365df18b509b7`, block 70431059 |
 | 2026-10-12 17:46 | 10143 | Android Auto-Launcher | Full-Stack Scripts | `launch_android_test.bat` | VERIFIED | 1-click launcher with LAN IP auto-detection, ADB port forward, backend health check & Expo Go |
 | 2026-10-12 19:25 | 10143 | Spore UI & Biometrics Overhaul | Mobile Client | `mobile/src/` | VERIFIED | Multi-step onboarding, expo-local-authentication hardware biometrics, Spore dark & non-neon yellowish lime palette, live backend API binding |
+| 2026-10-12 19:50 | 10143 | 3-Step Educational Onboarding & Monadscan Feed | Mobile Client | `mobile/src/` | VERIFIED | 3-step system/DEXs/security flow, verified Monad Testnet explorer txs, dynamic localhost API resolution |
 

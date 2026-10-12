@@ -14,12 +14,11 @@ import { useActivity } from "../state/hooks/useActivity";
 import { colors, radius, space } from "../theme";
 import { config } from "../config/env";
 import {
-  Clock,
   ExternalLink,
+  RefreshCw,
   Shield,
   Zap,
-  RotateCcw,
-  RefreshCw,
+  CheckCircle2,
 } from "lucide-react-native";
 
 export const ActivityScreen: React.FC = () => {
@@ -27,7 +26,11 @@ export const ActivityScreen: React.FC = () => {
 
   const handleOpenExplorer = (txHash: string) => {
     const url = `${config.explorerUrl || "https://testnet.monadscan.com"}/tx/${txHash}`;
-    Linking.openURL(url);
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.open(url, "_blank");
+    } else {
+      Linking.openURL(url);
+    }
   };
 
   return (
@@ -47,7 +50,7 @@ export const ActivityScreen: React.FC = () => {
               <ActivityIndicator size="small" color={colors.lime} />
             ) : (
               <View style={styles.refreshRow}>
-                <RefreshCw size={13} color={colors.lime} />
+                <RefreshCw size={12} color={colors.lime} />
                 <Text style={styles.refreshText}>Sync</Text>
               </View>
             )}
@@ -55,12 +58,13 @@ export const ActivityScreen: React.FC = () => {
         </View>
 
         <Text style={styles.screenSubtitle}>
-          Envio HyperIndex real-time GraphQL audit log on Monad Testnet.
+          Live Monad Testnet audit log · Click any transaction to view on Monadscan.
         </Text>
 
         {activities.map((act) => {
-          const isGuard = act.type === "GUARD_EVENT";
+          const isUnwind = act.type === "UNWIND";
           const isHedge = act.type === "OPEN_HEDGE";
+          const isDeploy = act.type === "DEPLOY";
 
           return (
             <TouchableOpacity
@@ -73,7 +77,13 @@ export const ActivityScreen: React.FC = () => {
                 <View
                   style={[
                     styles.typePill,
-                    isGuard ? styles.pillAmber : isHedge ? styles.pillLime : styles.pillDefault,
+                    isUnwind
+                      ? styles.pillCrimson
+                      : isHedge
+                      ? styles.pillLime
+                      : isDeploy
+                      ? styles.pillViolet
+                      : styles.pillDefault,
                   ]}
                 >
                   <Text
@@ -102,9 +112,9 @@ export const ActivityScreen: React.FC = () => {
 
                 <View style={styles.txHashRow}>
                   <Text style={styles.txHashText}>
-                    {act.txHash.slice(0, 6)}...{act.txHash.slice(-4)}
+                    {act.txHash.slice(0, 8)}...{act.txHash.slice(-6)}
                   </Text>
-                  <ExternalLink size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                  <ExternalLink size={12} color={colors.lime} style={{ marginLeft: 5 }} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -123,25 +133,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? 16 : 8,
+    paddingHorizontal: space.lg,
+    paddingTop: Platform.OS === "android" ? 36 : space.md,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: space.xs,
   },
   screenTitle: {
     color: colors.textPrimary,
     fontSize: 26,
     fontWeight: "800",
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
   },
   refreshButton: {
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderCard,
+    borderColor: colors.borderSubtle,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: radius.pill,
@@ -152,28 +162,29 @@ const styles = StyleSheet.create({
   },
   refreshText: {
     color: colors.lime,
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: "700",
     marginLeft: 6,
   },
   screenSubtitle: {
     color: colors.textSecondary,
     fontSize: 13,
-    marginBottom: 18,
+    marginBottom: space.lg,
+    lineHeight: 18,
   },
   activityCard: {
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderCard,
+    borderColor: colors.borderSubtle,
     borderRadius: radius.lg,
-    padding: 16,
-    marginBottom: 12,
+    padding: space.lg,
+    marginBottom: space.md,
   },
   activityHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: space.sm,
   },
   typePill: {
     paddingHorizontal: 8,
@@ -183,14 +194,21 @@ const styles = StyleSheet.create({
   pillLime: {
     backgroundColor: colors.lime,
   },
-  pillAmber: {
-    backgroundColor: colors.amberSoft,
+  pillCrimson: {
+    backgroundColor: colors.crimsonSoft,
+    borderWidth: 1,
+    borderColor: colors.crimson,
+  },
+  pillViolet: {
+    backgroundColor: colors.monadVioletSoft,
+    borderWidth: 1,
+    borderColor: colors.monadViolet,
   },
   pillDefault: {
-    backgroundColor: colors.glassFillLight,
+    backgroundColor: colors.surfaceCardElevated,
   },
   typeText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: "700",
   },
   typeTextDark: {
@@ -205,15 +223,15 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     color: colors.textPrimary,
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: "600",
-    marginBottom: 12,
+    marginBottom: space.sm,
   },
   activityFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 10,
+    paddingTop: space.sm,
     borderTopWidth: 1,
     borderTopColor: colors.borderSubtle,
   },
@@ -232,7 +250,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   txHashText: {
-    color: colors.textSecondary,
-    fontSize: 11.5,
+    color: colors.lime,
+    fontSize: 11,
+    fontWeight: "600",
   },
 });
