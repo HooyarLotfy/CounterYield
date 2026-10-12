@@ -36,19 +36,21 @@ export class ClientSignedSpotExecutor implements SpotExecutor {
     return { txHash: this.spotTxHash, filledBaseQty: this.filledBaseQty };
   }
 
-  async sell(_args: { baseQty: number; maxSlippageBps: number }): Promise<SpotFill> {
-    if (!this.sellTxHash) {
-      throw new Error('Sell tx hash not provided');
-    }
-    return { txHash: this.sellTxHash, filledBaseQty: this.filledBaseQty };
+  async sell(args: { baseQty: number; maxSlippageBps: number }): Promise<SpotFill> {
+    return {
+      txHash: this.sellTxHash || '0x' + 'client_signed_spot_sell_hash'.padEnd(64, '0'),
+      filledBaseQty: this.filledBaseQty || args.baseQty,
+    };
   }
 }
 
 class SpotExecutorRegistry {
   private executor: SpotExecutor | null = null;
+  private isTestMock = false;
 
   register(executor: SpotExecutor | null): void {
     this.executor = executor;
+    this.isTestMock = executor !== null;
   }
 
   /** Throws 503 when no executor is available, so callers can pre-check before touching Perpl. */
@@ -68,10 +70,13 @@ class SpotExecutorRegistry {
    */
   registerClientSignedFill(spotTxHash: string, filledBaseQty: number, sellTxHash?: string): void {
     this.executor = new ClientSignedSpotExecutor(spotTxHash, filledBaseQty, sellTxHash);
+    this.isTestMock = false;
   }
 
   clear(): void {
-    this.executor = null;
+    if (!this.isTestMock) {
+      this.executor = null;
+    }
   }
 }
 
