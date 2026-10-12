@@ -4,20 +4,17 @@
     "slug": "counteryield",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "backgroundColor": "#0A0D14"
-    },
+    "platforms": ["ios", "android", "web"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "xyz.counteryield.app"
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#0A0D14"
-      },
       "package": "xyz.counteryield.app"
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }

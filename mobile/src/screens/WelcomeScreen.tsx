@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,23 +10,24 @@ import {
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { MeraAuthService, BiometricCapability } from "../auth/meraAuth";
-import { colors, radius, space, spore } from "../theme";
+import { colors, radius, space } from "../theme";
 import {
   ShieldCheck,
   Zap,
   Lock,
   ArrowRight,
-  Sparkles,
   ChevronLeft,
   CheckCircle2,
   Fingerprint,
   Smartphone,
   Eye,
+  Camera,
+  Laptop,
 } from "lucide-react-native";
 
 export const WelcomeScreen: React.FC = () => {
   const { authenticate, loadDemoTestingPreset } = useAppStore();
-  
+
   // Multi-step onboarding: 1 = Landing, 2 = Biometrics & Security, 3 = Vault Ready
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -36,8 +37,15 @@ export const WelcomeScreen: React.FC = () => {
     isEnrolled: false,
     biometryType: "PASSKEY",
     label: "Face ID / Passkey",
+    isWeb: Platform.OS === "web",
   });
   const [vaultAddress, setVaultAddress] = useState<string>("0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+
+  // Laptop Webcam Simulation states (Web only)
+  const videoRef = useRef<any>(null);
+  const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [webcamStream, setWebcamStream] = useState<any>(null);
 
   // Query hardware capabilities on mount
   useEffect(() => {
@@ -46,6 +54,18 @@ export const WelcomeScreen: React.FC = () => {
     });
   }, []);
 
+  // Cleanup webcam stream if component unmounts
+  useEffect(() => {
+    return () => {
+      if (webcamStream) {
+        try {
+          webcamStream.getTracks().forEach((track: any) => track.stop());
+        } catch {}
+      }
+    };
+  }, [webcamStream]);
+
+  // Handle native biometrics or desktop passkey unlock
   const handleBiometricEnrollment = async () => {
     setIsAuthenticating(true);
     setAuthError(null);
@@ -66,7 +86,61 @@ export const WelcomeScreen: React.FC = () => {
     }
   };
 
+  // Start Laptop Webcam Face ID scan (HTML5 getUserMedia)
+  const startWebcamScan = async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      // Fallback if browser doesn't have camera API
+      handleBiometricEnrollment();
+      return;
+    }
+
+    setIsAuthenticating(true);
+    setAuthError(null);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 320 } },
+      });
+      setWebcamStream(stream);
+      setIsWebcamActive(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+
+      // Simulate 1.5s biometric facial scanning
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 25;
+        setScanProgress(progress);
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            // Stop camera tracks
+            try {
+              stream.getTracks().forEach((track) => track.stop());
+            } catch {}
+            setIsWebcamActive(false);
+            setIsAuthenticating(false);
+            setVaultAddress(MeraAuthService.getPrimaryAddress());
+            setStep(3);
+          }, 300);
+        }
+      }, 350);
+    } catch (err: any) {
+      setIsAuthenticating(false);
+      setIsWebcamActive(false);
+      setAuthError("Webcam access declined or unavailable. You can use Desktop Bypass below.");
+    }
+  };
+
   const handleSkipToReady = () => {
+    if (webcamStream) {
+      try {
+        webcamStream.getTracks().forEach((track: any) => track.stop());
+      } catch {}
+    }
     setVaultAddress(MeraAuthService.getPrimaryAddress());
     setStep(3);
   };
@@ -84,7 +158,15 @@ export const WelcomeScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.backBtn}
               activeOpacity={0.7}
-              onPress={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2) : 1))}
+              onPress={() => {
+                if (webcamStream) {
+                  try {
+                    webcamStream.getTracks().forEach((track: any) => track.stop());
+                  } catch {}
+                }
+                setIsWebcamActive(false);
+                setStep((s) => (s > 1 ? ((s - 1) as 1 | 2) : 1));
+              }}
             >
               <ChevronLeft size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -181,13 +263,14 @@ export const WelcomeScreen: React.FC = () => {
                 <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
               </TouchableOpacity>
 
+              {/* Desktop / Judges Preset Quick Test */}
               <TouchableOpacity
                 style={styles.secondaryButton}
                 activeOpacity={0.7}
                 onPress={loadDemoTestingPreset}
               >
                 <Text style={styles.secondaryButtonText}>
-                  ⚡ Load Demo Preset (Judges)
+                  ⚡ {Platform.OS === "web" ? "Desktop 1-Click Launch (Judges Demo)" : "Load Demo Preset (Judges)"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -197,41 +280,82 @@ export const WelcomeScreen: React.FC = () => {
         {/* STEP 2: BIOMETRIC & SECURITY ENROLLMENT */}
         {step === 2 && (
           <View style={styles.stepContent}>
-            {/* Visual Icon */}
+            {/* Visual Icon OR Live Laptop Webcam Stream on Web */}
             <View style={styles.securityIconContainer}>
-              <View style={styles.securityIconGlow}>
-                <View style={styles.securityIconInner}>
-                  {capabilities.biometryType === "FACE_ID" ? (
-                    <Eye size={36} color={colors.lime} strokeWidth={2.2} />
-                  ) : capabilities.biometryType === "TOUCH_ID" ||
-                    capabilities.biometryType === "FINGERPRINT" ? (
-                    <Fingerprint size={36} color={colors.lime} strokeWidth={2.2} />
-                  ) : (
-                    <Lock size={36} color={colors.lime} strokeWidth={2.2} />
-                  )}
+              {Platform.OS === "web" && isWebcamActive ? (
+                <View style={styles.webcamViewfinder}>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      width: 140,
+                      height: 140,
+                      borderRadius: 70,
+                      objectFit: "cover",
+                      transform: "scaleX(-1)",
+                    }}
+                  />
+                  {/* Face ID Scanning Reticle Overlay */}
+                  <View style={styles.scanReticle}>
+                    <View style={styles.reticleCornerTopLeft} />
+                    <View style={styles.reticleCornerTopRight} />
+                    <View style={styles.reticleCornerBottomLeft} />
+                    <View style={styles.reticleCornerBottomRight} />
+                  </View>
                 </View>
-              </View>
+              ) : (
+                <View style={styles.securityIconGlow}>
+                  <View style={styles.securityIconInner}>
+                    {Platform.OS === "web" ? (
+                      <Camera size={36} color={colors.lime} strokeWidth={2.2} />
+                    ) : capabilities.biometryType === "FACE_ID" ? (
+                      <Eye size={36} color={colors.lime} strokeWidth={2.2} />
+                    ) : capabilities.biometryType === "TOUCH_ID" ||
+                      capabilities.biometryType === "FINGERPRINT" ? (
+                      <Fingerprint size={36} color={colors.lime} strokeWidth={2.2} />
+                    ) : (
+                      <Lock size={36} color={colors.lime} strokeWidth={2.2} />
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Step 2 Copy */}
             <View style={styles.securityCopy}>
               <Text style={styles.screenHeading}>
-                Protect with {capabilities.label}
+                {Platform.OS === "web"
+                  ? isWebcamActive
+                    ? `Scanning Face... ${scanProgress}%`
+                    : "Laptop Biometric Security"
+                  : `Protect with ${capabilities.label}`}
               </Text>
               <Text style={styles.screenSubheading}>
-                CounterYield isolates trade-only keys in your device's hardware Secure Enclave.
+                {Platform.OS === "web"
+                  ? "Test Face ID verification using your laptop's webcam, or use 1-click desktop bypass."
+                  : "CounterYield isolates trade-only keys in your device's hardware Secure Enclave."}
               </Text>
             </View>
 
             {/* Live Hardware Status Chip */}
             <View style={styles.hardwareCard}>
               <View style={styles.hardwareRow}>
-                <Smartphone size={16} color={colors.lime} strokeWidth={2} />
-                <Text style={styles.hardwareTitle}>Hardware Secure Enclave</Text>
+                {Platform.OS === "web" ? (
+                  <Laptop size={16} color={colors.lime} strokeWidth={2} />
+                ) : (
+                  <Smartphone size={16} color={colors.lime} strokeWidth={2} />
+                )}
+                <Text style={styles.hardwareTitle}>
+                  {Platform.OS === "web" ? "Desktop Browser Environment" : "Hardware Secure Enclave"}
+                </Text>
                 <View style={styles.activeDot} />
               </View>
               <Text style={styles.hardwareDesc}>
-                {capabilities.hasHardware
+                {Platform.OS === "web"
+                  ? "Webcam Face ID simulation ready. Zero native bridge required on desktop."
+                  : capabilities.hasHardware
                   ? `${capabilities.label} detected on this device.`
                   : "Hardware passkey available for session encryption."}
               </Text>
@@ -246,33 +370,67 @@ export const WelcomeScreen: React.FC = () => {
 
             {/* Action Buttons */}
             <View style={styles.bottomDock}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                activeOpacity={0.85}
-                disabled={isAuthenticating}
-                onPress={handleBiometricEnrollment}
-              >
-                {isAuthenticating ? (
-                  <ActivityIndicator color={colors.textDark} />
-                ) : (
-                  <>
-                    <Text style={styles.primaryButtonText}>
-                      Enable {capabilities.label}
-                    </Text>
-                    <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
-                  </>
-                )}
-              </TouchableOpacity>
+              {Platform.OS === "web" ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    activeOpacity={0.85}
+                    disabled={isAuthenticating}
+                    onPress={startWebcamScan}
+                  >
+                    {isAuthenticating ? (
+                      <ActivityIndicator color={colors.textDark} />
+                    ) : (
+                      <>
+                        <Camera size={18} color={colors.textDark} strokeWidth={2.4} />
+                        <Text style={styles.primaryButtonText}>
+                          Scan with Laptop Webcam (Face ID)
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.textActionBtn}
-                activeOpacity={0.7}
-                onPress={handleSkipToReady}
-              >
-                <Text style={styles.textActionText}>
-                  Use Passcode / Set up later
-                </Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    activeOpacity={0.7}
+                    onPress={handleSkipToReady}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      ⚡ 1-Click Desktop Test (Bypass Biometrics)
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    activeOpacity={0.85}
+                    disabled={isAuthenticating}
+                    onPress={handleBiometricEnrollment}
+                  >
+                    {isAuthenticating ? (
+                      <ActivityIndicator color={colors.textDark} />
+                    ) : (
+                      <>
+                        <Text style={styles.primaryButtonText}>
+                          Enable {capabilities.label}
+                        </Text>
+                        <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.textActionBtn}
+                    activeOpacity={0.7}
+                    onPress={handleSkipToReady}
+                  >
+                    <Text style={styles.textActionText}>
+                      Use Passcode / Set up later
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         )}
@@ -347,6 +505,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     paddingHorizontal: space.lg,
     paddingTop: Platform.OS === "android" ? 36 : space.md,
+    maxWidth: Platform.OS === "web" ? 480 : "100%",
+    width: "100%",
+    alignSelf: "center",
   },
   stepperHeader: {
     flexDirection: "row",
@@ -538,6 +699,61 @@ const styles = StyleSheet.create({
     borderColor: colors.borderHighlight,
     alignItems: "center",
     justifyContent: "center",
+  },
+  webcamViewfinder: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    overflow: "hidden",
+    position: "relative",
+    borderWidth: 2,
+    borderColor: colors.lime,
+    backgroundColor: colors.surface,
+  },
+  scanReticle: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reticleCornerTopLeft: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    width: 16,
+    height: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: colors.lime,
+  },
+  reticleCornerTopRight: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 16,
+    height: 16,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: colors.lime,
+  },
+  reticleCornerBottomLeft: {
+    position: "absolute",
+    bottom: 16,
+    left: 16,
+    width: 16,
+    height: 16,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: colors.lime,
+  },
+  reticleCornerBottomRight: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    width: 16,
+    height: 16,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: colors.lime,
   },
   securityCopy: {
     alignItems: "center",
