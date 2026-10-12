@@ -6,14 +6,42 @@ export interface SpotFill {
 }
 
 /**
- * Executes the Kuru spot leg. The spot trade must be signed by the USER's Mera account
- * (CarryLedger and Kuru positions are owned by msg.sender), so a custody-free backend
- * cannot sign it. The strategy engine therefore depends on this interface and refuses to
- * open Leg 1 unless an executor is registered. The mobile app (or tests) supplies one.
+ * Executes the Kuru spot leg.
+ *
+ * Architecture: The Kuru spot buy is signed and submitted by the mobile app
+ * (user's Mera wallet holds the key; CarryLedger and Kuru positions are owned by msg.sender).
+ * The backend cannot sign on behalf of users in a non-custodial system.
+ *
+ * Two execution modes:
+ * 1. CLIENT_SIGNED: Mobile app submits Kuru tx, passes txHash + filledQty to /strategy/enter
+ * 2. TEST: Unit tests register an in-process mock executor
  */
 export interface SpotExecutor {
   buy(args: { quoteAmountAusd: number; baseQty: number; maxSlippageBps: number }): Promise<SpotFill>;
   sell(args: { baseQty: number; maxSlippageBps: number }): Promise<SpotFill>;
+}
+
+/**
+ * Pre-provided spot fill from the client-signed mobile execution.
+ * The mobile app signs and broadcasts the Kuru tx, then passes the result here.
+ */
+export class ClientSignedSpotExecutor implements SpotExecutor {
+  constructor(
+    private readonly spotTxHash: string,
+    private readonly filledBaseQty: number,
+    private readonly sellTxHash?: string,
+  ) {}
+
+  async buy(_args: { quoteAmountAusd: number; baseQty: number; maxSlippageBps: number }): Promise<SpotFill> {
+    return { txHash: this.spotTxHash, filledBaseQty: this.filledBaseQty };
+  }
+
+  async sell(_args: { baseQty: number; maxSlippageBps: number }): Promise<SpotFill> {
+    if (!this.sellTxHash) {
+      throw new Error('Sell tx hash not provided');
+    }
+    return { txHash: this.sellTxHash, filledBaseQty: this.filledBaseQty };
+  }
 }
 
 class SpotExecutorRegistry {
@@ -28,10 +56,22 @@ class SpotExecutorRegistry {
     if (!this.executor) {
       throw new ServiceUnavailableError(
         'SPOT_EXECUTOR_NOT_CONFIGURED',
-        'No Kuru spot executor registered: the user-signed spot leg is unavailable. No order was placed.'
+        'No Kuru spot executor registered. The strategy/enter endpoint requires spotTxHash and filledBaseQty from the client-signed mobile transaction.',
       );
     }
     return this.executor;
+  }
+
+  /**
+   * Registers a one-shot client-signed executor from the mobile app's pre-submitted Kuru tx.
+   * Called by strategyRoutes before invoking the strategy engine.
+   */
+  registerClientSignedFill(spotTxHash: string, filledBaseQty: number, sellTxHash?: string): void {
+    this.executor = new ClientSignedSpotExecutor(spotTxHash, filledBaseQty, sellTxHash);
+  }
+
+  clear(): void {
+    this.executor = null;
   }
 }
 

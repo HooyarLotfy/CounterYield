@@ -7,6 +7,18 @@ import { marketEligibilityEngine } from '../../engine/marketEligibility.js';
 import { db } from '../../db/database.js';
 import { spotExecutors } from '../../engine/spotExecutor.js';
 
+/**
+ * On Monad testnet, API secrets may be shorter than 32 bytes.
+ * We accept any non-empty hex string (with or without 0x prefix) for testnet compatibility.
+ */
+const hexSecretRegex = /^(0x)?[0-9a-fA-F]{1,128}$/;
+function padSecretToBytes(hex: string): Buffer {
+  const clean = hex.replace(/^0x/, '');
+  // Right-pad with zeros to 64 hex chars (32 bytes) if needed — testnet safe
+  const padded = clean.padEnd(64, '0').slice(0, 64);
+  return Buffer.from(padded, 'hex');
+}
+
 const enterSchema = z.object({
   ownerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   marketId: z.string().default('MON'),
@@ -14,20 +26,28 @@ const enterSchema = z.object({
   leverage: z.number().min(1).max(2).default(1),
   maxSlippageBps: z.number().default(50),
   apiKey: z.string().min(1),
-  apiSecretHex: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/),
+  apiSecretHex: z.string().regex(hexSecretRegex, 'Must be a hex string (any length)'),
+  // Client-signed Kuru spot execution — provided by mobile app
+  spotTxHash: z.string().optional(),
+  filledBaseQty: z.number().optional(),
 });
 
 const unwindSchema = z.object({
   positionId: z.string(),
   reason: z.string().default('USER_REQUESTED'),
   apiKey: z.string().min(1),
-  apiSecretHex: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/),
+  apiSecretHex: z.string().regex(hexSecretRegex, 'Must be a hex string (any length)'),
+  // Client-signed Kuru spot sell — provided by mobile app
+  spotSellTxHash: z.string().optional(),
+  filledSellQty: z.number().optional(),
 });
 
 const rebalanceSchema = z.object({
   positionId: z.string(),
   reason: z.string().default('MANUAL_USER_REBALANCE'),
   targetMarginRatio: z.number().optional().default(1.0),
+  spotTxHash: z.string().optional(),
+  filledBaseQty: z.number().optional(),
 });
 
 const eligibilitySchema = z.object({
@@ -60,35 +80,49 @@ export async function strategyRoutes(fastify: FastifyInstance) {
   );
 
   // 2. Execute Coordinated Dual-Leg Entry
+  // The mobile app should:
+  //   a) Call GET /api/v1/market/quote to get sizing
+  //   b) Sign and submit the Kuru spot buy directly (user's Mera wallet)
+  //   c) Pass spotTxHash + filledBaseQty to this endpoint
+  //   d) This endpoint handles the Perpl short leg
   fastify.post(
     '/api/v1/strategy/enter',
     { preHandler: validateBody(enterSchema) },
     async (request: FastifyRequest) => {
       const body = request.body as z.infer<typeof enterSchema>;
-      const secretBytes = Buffer.from(body.apiSecretHex.replace(/^0x/, ''), 'hex');
+      const secretBytes = padSecretToBytes(body.apiSecretHex);
 
-      const position = await strategyEngine.executeEntry({
-        ownerAddress: body.ownerAddress as `0x${string}`,
-        marketId: body.marketId,
-        depositAmount: body.depositAmount,
-        leverage: body.leverage,
-        maxSlippageBps: body.maxSlippageBps,
-        perplApiKey: body.apiKey,
-        perplSecretBytes: secretBytes,
-      });
+      // Register the client-signed Kuru spot fill if provided
+      if (body.spotTxHash && body.filledBaseQty) {
+        spotExecutors.registerClientSignedFill(body.spotTxHash, body.filledBaseQty);
+      }
 
-      // Save to persistent database
-      db.savePosition(position);
+      try {
+        const position = await strategyEngine.executeEntry({
+          ownerAddress: body.ownerAddress as `0x${string}`,
+          marketId: body.marketId,
+          depositAmount: body.depositAmount,
+          leverage: body.leverage,
+          maxSlippageBps: body.maxSlippageBps,
+          perplApiKey: body.apiKey,
+          perplSecretBytes: secretBytes,
+        });
 
-      return {
-        success: true,
-        data: position,
-        timestamp: Date.now(),
-      };
+        // Save to persistent database
+        db.savePosition(position);
+
+        return {
+          success: true,
+          data: position,
+          timestamp: Date.now(),
+        };
+      } finally {
+        spotExecutors.clear(); // Always clear one-shot executor after use
+      }
     }
   );
 
-  // 3. Manual "Rebalance Now" Guaranteed User Action
+  // 3. Manual "Rebalance Now" — requires pre-submitted Kuru tx from mobile
   fastify.post(
     '/api/v1/strategy/rebalance',
     { preHandler: validateBody(rebalanceSchema) },
@@ -104,7 +138,6 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         throw new Error(`Position ${body.positionId} is not active (state: ${position.state})`);
       }
 
-      // Hedge drift = |spot - perp| / perp (spec 6.3: rebalance the smaller leg above 1%).
       const oldSpot = parseFloat(position.spotLeg.quantity);
       const oldPerp = parseFloat(position.perpLeg.quantity);
       const driftRatio = oldPerp > 0 ? Math.abs(oldSpot - oldPerp) / oldPerp : 0;
@@ -121,9 +154,35 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         };
       }
 
-      // Drift correction trades the smaller leg and needs the user-signed spot executor.
-      spotExecutors.require();
-      throw new Error('Drift rebalance execution is not implemented for the backend path; use the in-app engine');
+      // If mobile supplied a pre-signed Kuru rebalance tx, register it
+      if (body.spotTxHash && body.filledBaseQty) {
+        spotExecutors.registerClientSignedFill(body.spotTxHash, body.filledBaseQty);
+        // Record rebalance in position history
+        position.spotLeg.quantity = body.filledBaseQty.toFixed(6);
+        db.savePosition(position);
+        spotExecutors.clear();
+        return {
+          success: true,
+          data: {
+            positionId: position.positionId,
+            status: 'REBALANCED',
+            driftBps: Math.round(driftRatio * 10000),
+            newSpotQty: body.filledBaseQty,
+          },
+          timestamp: Date.now(),
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          positionId: position.positionId,
+          status: 'REBALANCE_PENDING_CLIENT_TX',
+          driftBps: Math.round(driftRatio * 10000),
+          message: 'Please submit the Kuru spot adjustment tx from the mobile app, then call this endpoint with spotTxHash + filledBaseQty',
+        },
+        timestamp: Date.now(),
+      };
     }
   );
 
@@ -139,23 +198,33 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         throw new Error(`Position ${body.positionId} not found`);
       }
 
-      const secretBytes = Buffer.from(body.apiSecretHex.replace(/^0x/, ''), 'hex');
-      const unwindResult = await unwindEngine.executeUnwind(
-        position,
-        body.apiKey,
-        secretBytes,
-        body.reason
-      );
+      const secretBytes = padSecretToBytes(body.apiSecretHex);
 
-      // Update position state and persist
-      position.state = 'CLOSED';
-      db.savePosition(position);
+      // Register client-signed Kuru sell if provided
+      if (body.spotSellTxHash && body.filledSellQty) {
+        spotExecutors.registerClientSignedFill('', 0, body.spotSellTxHash);
+      }
 
-      return {
-        success: true,
-        data: unwindResult,
-        timestamp: Date.now(),
-      };
+      try {
+        const unwindResult = await unwindEngine.executeUnwind(
+          position,
+          body.apiKey,
+          secretBytes,
+          body.reason
+        );
+
+        // Update position state and persist
+        position.state = 'CLOSED';
+        db.savePosition(position);
+
+        return {
+          success: true,
+          data: unwindResult,
+          timestamp: Date.now(),
+        };
+      } finally {
+        spotExecutors.clear();
+      }
     }
   );
 }

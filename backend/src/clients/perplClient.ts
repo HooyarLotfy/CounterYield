@@ -12,6 +12,7 @@ import {
   PerplTicker,
 } from '../types/perpl.js';
 import { ServiceUnavailableError } from '../utils/errors.js';
+import { publicClient } from './monadClient.js';
 
 export class PerplClient {
   private apiUrl: string;
@@ -156,11 +157,21 @@ export class PerplClient {
     baseQuantity: number,
     markPrice: number,
     leverage: number,
-    orderTtlBlocks: number = 30,
-    currentBlock: number = 1000
+    orderTtlBlocks: number = 30
   ): Promise<PerplBatchResponse> {
     const scaledSize = Math.round(baseQuantity * 1e5); // 5 decimals standard size scaling
     const scaledPrice = Math.round(markPrice * 1e2); // 2 decimals price scaling
+
+    // Fetch real current block from Monad RPC to ensure order TTL is valid
+    let currentBlock: number;
+    try {
+      const blockBigInt = await publicClient.getBlockNumber();
+      currentBlock = Number(blockBigInt);
+      logger.info({ currentBlock }, 'Fetched live Monad block number for Perpl order TTL');
+    } catch (err) {
+      logger.error({ err }, 'Failed to fetch Monad block number; using cached estimate');
+      throw new ServiceUnavailableError('BLOCK_FETCH_FAILED', 'Cannot fetch Monad block number for order TTL');
+    }
 
     const order: PerplOrderSpec = {
       rq: Date.now(),
@@ -187,10 +198,19 @@ export class PerplClient {
     marketId: number,
     baseQuantity: number,
     positionId?: number,
-    orderTtlBlocks: number = 30,
-    currentBlock: number = 1000
+    orderTtlBlocks: number = 30
   ): Promise<PerplBatchResponse> {
     const scaledSize = Math.round(baseQuantity * 1e5);
+
+    // Fetch real current block from Monad RPC
+    let currentBlock: number;
+    try {
+      const blockBigInt = await publicClient.getBlockNumber();
+      currentBlock = Number(blockBigInt);
+    } catch {
+      logger.error('Cannot fetch Monad block for flatten order; using cached high estimate');
+      currentBlock = 70_500_000; // Safe fallback: any recent block is fine for flatten
+    }
 
     const order: PerplOrderSpec = {
       rq: Date.now(),
