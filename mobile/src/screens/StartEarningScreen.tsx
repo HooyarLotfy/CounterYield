@@ -11,62 +11,46 @@ import {
   Platform,
 } from "react-native";
 import { useAppStore } from "../state/store";
-import { backendApi } from "../services/backendApi";
+import { useLiveQuote, useStrategyExecution } from "../services/useBackendData";
 import { colors, radius, space } from "../theme";
 import {
   Zap,
   Shield,
   ArrowRight,
-  Sparkles,
-  Info,
   Clock,
   ChevronLeft,
+  CheckCircle2,
 } from "lucide-react-native";
 
 export const StartEarningScreen: React.FC = () => {
-  const { userAddress, setActiveTab, updatePosition } = useAppStore();
+  const { userAddress, setActiveTab, walletBalanceAusd } = useAppStore();
   const [depositAmount, setDepositAmount] = useState<string>("1000");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const numericDeposit = parseFloat(depositAmount) || 0;
+  const { quote, isLoading: isQuoteLoading } = useLiveQuote(numericDeposit);
+  const { enterStrategy, isSubmitting } = useStrategyExecution();
+
   const reserveBuffer = numericDeposit * 0.1;
   const activeCapital = numericDeposit - reserveBuffer;
   const spotAlloc = activeCapital / 2;
   const perpAlloc = activeCapital / 2;
 
-  // Assuming 18.4% APY and 0.20% round-trip taker fees
+  // Round-trip taker fees & carry calculation
   const roundTripCost = numericDeposit * 0.002;
   const dailyCarry = (numericDeposit * 0.184) / 365;
   const breakEvenDays = dailyCarry > 0 ? (roundTripCost / dailyCarry).toFixed(1) : "0.0";
 
   const handleStartEarning = async () => {
-    setIsSubmitting(true);
-    try {
-      if (userAddress) {
-        await backendApi.enter({
-          ownerAddress: userAddress,
-          depositAmount: numericDeposit,
-          leverage: 1,
-          maxSlippageBps: 20,
-          apiKey: "pk_trade_session_ed25519",
-          apiSecretHex: "0xsecret_key_mock_prf",
-        }).catch(() => null);
-      }
-    } finally {
-      updatePosition({
-        state: "ACTIVE",
-        depositAmount: numericDeposit,
-        reserveBuffer,
-        spotQuantity: spotAlloc / 10,
-        perpQuantity: perpAlloc / 10,
-        netDeltaDollars: 0.0,
-        estimatedApr: 0.184,
-        tier: "NORMAL",
-        marginRatio: 0.95,
-      });
-      setIsSubmitting(false);
-      setActiveTab("home");
-    }
+    if (numericDeposit <= 0) return;
+
+    await enterStrategy({
+      ownerAddress: userAddress || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+      depositAmount: numericDeposit,
+      leverage: 1,
+      maxSlippageBps: 20,
+    });
+
+    setActiveTab("home");
   };
 
   return (
@@ -75,7 +59,7 @@ export const StartEarningScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Navigation Header */}
         <View style={styles.topHeader}>
           <TouchableOpacity
             style={styles.backButton}
@@ -85,19 +69,27 @@ export const StartEarningScreen: React.FC = () => {
             <ChevronLeft size={20} color={colors.textPrimary} />
             <Text style={styles.backButtonText}>Home</Text>
           </TouchableOpacity>
+
           <View style={styles.headerTag}>
-            <Text style={styles.headerTagText}>1-Tap Basis Sizer</Text>
+            <Text style={styles.headerTagText}>10143 · Carry Vault</Text>
           </View>
         </View>
 
+        {/* Clean Page Title */}
         <Text style={styles.screenTitle}>Start Earning</Text>
         <Text style={styles.screenSubtitle}>
-          Enter AUSD deposit amount. The protocol automatically hedges spot & short legs with a 10% reserve.
+          Deposit AUSD to lock funding arbitrage with zero directional risk.
         </Text>
 
-        {/* Deposit Input Card */}
+        {/* Deposit Input Card (Uniswap Inset Pattern) */}
         <View style={styles.inputCard}>
-          <Text style={styles.inputLabel}>Deposit Amount</Text>
+          <View style={styles.inputCardHeader}>
+            <Text style={styles.inputLabel}>Deposit Amount</Text>
+            <Text style={styles.inputBalance}>
+              Avail: ${walletBalanceAusd.toFixed(2)} AUSD
+            </Text>
+          </View>
+
           <View style={styles.inputRow}>
             <TextInput
               style={styles.textInput}
@@ -105,14 +97,14 @@ export const StartEarningScreen: React.FC = () => {
               value={depositAmount}
               onChangeText={setDepositAmount}
               placeholder="0.00"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={colors.textTertiary}
             />
             <View style={styles.currencyBadge}>
               <Text style={styles.inputCurrency}>AUSD</Text>
             </View>
           </View>
 
-          {/* Quick preset chips */}
+          {/* Quick Preset Chips */}
           <View style={styles.presetRow}>
             {["250", "500", "1000", "5000"].map((preset) => (
               <TouchableOpacity
@@ -139,14 +131,15 @@ export const StartEarningScreen: React.FC = () => {
 
         {/* Dual-Leg Sizing Breakdown Card */}
         <View style={styles.breakdownCard}>
-          <Text style={styles.cardHeader}>Automated Capital Allocation</Text>
+          <Text style={styles.cardHeader}>Automated Allocation</Text>
 
+          {/* 10% Reserve */}
           <View style={styles.allocRow}>
             <View style={styles.allocLeft}>
-              <View style={[styles.allocDot, { backgroundColor: colors.agoraGreen }]} />
+              <View style={[styles.allocDot, { backgroundColor: colors.lime }]} />
               <View>
-                <Text style={styles.allocTitle}>10% Liquidity Reserve</Text>
-                <Text style={styles.allocDesc}>Absorbs price wicks & top-ups</Text>
+                <Text style={styles.allocTitle}>10% Reserve Buffer</Text>
+                <Text style={styles.allocDesc}>Liquidation & margin buffer</Text>
               </View>
             </View>
             <Text style={styles.allocAmount}>${reserveBuffer.toFixed(2)} AUSD</Text>
@@ -154,12 +147,13 @@ export const StartEarningScreen: React.FC = () => {
 
           <View style={styles.divider} />
 
+          {/* Kuru Spot */}
           <View style={styles.allocRow}>
             <View style={styles.allocLeft}>
               <View style={[styles.allocDot, { backgroundColor: colors.kuruOrange }]} />
               <View>
                 <Text style={styles.allocTitle}>Kuru Spot MON (Long)</Text>
-                <Text style={styles.allocDesc}>Spot asset backing (45%)</Text>
+                <Text style={styles.allocDesc}>Spot asset allocation (45%)</Text>
               </View>
             </View>
             <Text style={styles.allocAmount}>${spotAlloc.toFixed(2)} AUSD</Text>
@@ -167,38 +161,39 @@ export const StartEarningScreen: React.FC = () => {
 
           <View style={styles.divider} />
 
+          {/* Perpl Short */}
           <View style={styles.allocRow}>
             <View style={styles.allocLeft}>
               <View style={[styles.allocDot, { backgroundColor: colors.monadViolet }]} />
               <View>
                 <Text style={styles.allocTitle}>Perpl 1x Short (Market 64)</Text>
-                <Text style={styles.allocDesc}>Delta neutralization hedge (45%)</Text>
+                <Text style={styles.allocDesc}>Delta-neutral hedge (45%)</Text>
               </View>
             </View>
             <Text style={styles.allocAmount}>${perpAlloc.toFixed(2)} AUSD</Text>
           </View>
         </View>
 
-        {/* Break-Even Calculator Card */}
+        {/* Return & Break-Even Metric Strip */}
         <View style={styles.estimatorCard}>
           <View style={styles.estimatorHeader}>
-            <Clock size={16} color={colors.lime} strokeWidth={2.4} />
-            <Text style={styles.estimatorTitle}>Break-Even Estimator</Text>
+            <Clock size={15} color={colors.lime} strokeWidth={2.4} />
+            <Text style={styles.estimatorTitle}>Break-Even Estimate</Text>
           </View>
 
           <View style={styles.estimatorRow}>
             <View>
-              <Text style={styles.estimatorLabel}>Est. Round-Trip Fees</Text>
-              <Text style={styles.estimatorValue}>-${roundTripCost.toFixed(2)} AUSD</Text>
+              <Text style={styles.estimatorLabel}>Est. Fees</Text>
+              <Text style={styles.estimatorValue}>-${roundTripCost.toFixed(2)}</Text>
             </View>
             <View style={{ alignItems: "center" }}>
-              <Text style={styles.estimatorLabel}>Daily Carry Rate</Text>
+              <Text style={styles.estimatorLabel}>Daily Carry</Text>
               <Text style={[styles.estimatorValue, { color: colors.lime }]}>
                 +${dailyCarry.toFixed(2)}/day
               </Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.estimatorLabel}>Days to Profit</Text>
+              <Text style={styles.estimatorLabel}>Break-Even</Text>
               <Text style={[styles.estimatorValue, { color: colors.lime }]}>
                 {breakEvenDays} Days
               </Text>
@@ -206,7 +201,7 @@ export const StartEarningScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Submit Button */}
+        {/* 1-Tap Execution CTA */}
         <TouchableOpacity
           style={styles.submitBtn}
           activeOpacity={0.85}
@@ -217,12 +212,13 @@ export const StartEarningScreen: React.FC = () => {
             <ActivityIndicator color={colors.textDark} />
           ) : (
             <>
-              <Zap size={20} color={colors.textDark} strokeWidth={2.4} />
+              <Zap size={18} color={colors.textDark} strokeWidth={2.4} />
               <Text style={styles.submitBtnText}>1-Tap Open Hedge Position</Text>
             </>
           )}
         </TouchableOpacity>
 
+        {/* Bottom Spacer */}
         <View style={{ height: 110 }} />
       </ScrollView>
     </SafeAreaView>
@@ -235,14 +231,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? 16 : 8,
+    paddingHorizontal: space.lg,
+    paddingTop: Platform.OS === "android" ? 36 : space.md,
   },
   topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: space.md,
   },
   backButton: {
     flexDirection: "row",
@@ -255,199 +251,199 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   headerTag: {
-    backgroundColor: colors.limeMuted,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radius.pill,
   },
   headerTagText: {
-    color: colors.lime,
+    color: colors.textSecondary,
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   screenTitle: {
-    color: colors.textPrimary,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "800",
+    color: colors.textPrimary,
     letterSpacing: -0.6,
-    marginBottom: 4,
   },
   screenSubtitle: {
-    color: colors.textSecondary,
     fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+    marginBottom: space.lg,
     lineHeight: 18,
-    marginBottom: 20,
   },
   inputCard: {
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderCard,
-    borderRadius: radius.xl,
-    padding: 20,
-    marginBottom: 16,
+    borderColor: colors.borderSubtle,
+    padding: space.lg,
+    marginBottom: space.md,
+  },
+  inputCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: space.xs,
   },
   inputLabel: {
-    color: colors.textSecondary,
     fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 10,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  inputBalance: {
+    fontSize: 12,
+    color: colors.textTertiary,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: colors.surfaceInput,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radius.lg,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
+    marginVertical: space.xs,
   },
   textInput: {
     flex: 1,
+    fontSize: 32,
+    fontWeight: "800",
     color: colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
     padding: 0,
   },
   currencyBadge: {
-    backgroundColor: colors.glassFillLight,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceCardElevated,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
   },
   inputCurrency: {
-    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
+    color: colors.textPrimary,
   },
   presetRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: space.xs,
+    marginTop: space.sm,
   },
   presetChip: {
     flex: 1,
+    backgroundColor: colors.surfaceCardElevated,
+    height: 36,
+    borderRadius: radius.pill,
     alignItems: "center",
-    backgroundColor: colors.surfaceInput,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radius.md,
-    paddingVertical: 8,
-    marginHorizontal: 3,
+    justifyContent: "center",
   },
   presetChipActive: {
-    backgroundColor: colors.limeMuted,
+    backgroundColor: colors.limeSoft,
+    borderWidth: 1,
     borderColor: colors.lime,
   },
   presetText: {
     color: colors.textSecondary,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "600",
   },
   presetTextActive: {
     color: colors.lime,
-    fontWeight: "700",
   },
   breakdownCard: {
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderCard,
-    borderRadius: radius.xl,
-    padding: 18,
-    marginBottom: 16,
+    borderColor: colors.borderSubtle,
+    padding: space.lg,
+    marginBottom: space.md,
   },
   cardHeader: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 14,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    marginBottom: space.md,
   },
   allocRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 4,
   },
   allocLeft: {
     flexDirection: "row",
     alignItems: "center",
+    gap: space.sm,
   },
   allocDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 10,
   },
   allocTitle: {
-    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "600",
+    color: colors.textPrimary,
   },
   allocDesc: {
-    color: colors.textSecondary,
     fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   allocAmount: {
-    color: colors.textPrimary,
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: "700",
+    color: colors.textPrimary,
   },
   divider: {
     height: 1,
     backgroundColor: colors.borderSubtle,
-    marginVertical: 10,
+    marginVertical: space.md,
   },
   estimatorCard: {
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderCard,
-    borderRadius: radius.xl,
-    padding: 18,
-    marginBottom: 20,
+    borderColor: colors.borderSubtle,
+    padding: space.lg,
+    marginBottom: space.lg,
   },
   estimatorHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
+    gap: 6,
+    marginBottom: space.sm,
   },
   estimatorTitle: {
-    color: colors.textPrimary,
-    fontSize: 13.5,
-    fontWeight: "700",
-    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
   estimatorRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
   estimatorLabel: {
-    color: colors.textSecondary,
     fontSize: 11,
-    marginBottom: 4,
+    color: colors.textTertiary,
   },
   estimatorValue: {
-    color: colors.textPrimary,
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: "700",
+    color: colors.textPrimary,
+    marginTop: 2,
   },
   submitBtn: {
+    backgroundColor: colors.lime,
+    height: 52,
+    borderRadius: radius.pill,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.lime,
-    borderRadius: radius.lg,
-    paddingVertical: 16,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
+    gap: space.xs,
   },
   submitBtnText: {
     color: colors.textDark,
-    fontSize: 14.5,
-    fontWeight: "800",
-    marginLeft: 8,
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

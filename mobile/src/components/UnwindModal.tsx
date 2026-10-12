@@ -10,7 +10,7 @@ import {
 import { useAppStore } from "../state/store";
 import { usePosition } from "../state/hooks/usePosition";
 import { colors, radius, space } from "../theme";
-import { XOctagon, AlertTriangle, ShieldCheck } from "lucide-react-native";
+import { XOctagon } from "lucide-react-native";
 
 export const UnwindModal: React.FC = () => {
   const { isUnwindModalOpen, openUnwindModal, activePosition } = useAppStore();
@@ -41,13 +41,12 @@ export const UnwindModal: React.FC = () => {
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <View style={styles.alertIconBadge}>
-            <XOctagon size={28} color={colors.crimson} strokeWidth={2.2} />
+            <XOctagon size={26} color={colors.crimson} strokeWidth={2.2} />
           </View>
 
           <Text style={styles.modalTitle}>Confirm 1-Tap Unwind</Text>
           <Text style={styles.modalSubtitle}>
-            Instantly market-sells your spot MON on Kuru CLOB and closes your short leg on Perpl DEX.
-            All capital reverts immediately to 100% unencumbered AUSD.
+            Closes Kuru spot and Perpl short legs simultaneously. All capital converts to unencumbered AUSD.
           </Text>
 
           <View style={styles.summaryCard}>
@@ -64,8 +63,8 @@ export const UnwindModal: React.FC = () => {
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Residual Market Risk</Text>
-              <Text style={styles.summaryValue}>0.00% (Cash Settlement)</Text>
+              <Text style={styles.summaryLabel}>Settlement Type</Text>
+              <Text style={styles.summaryValue}>Instant Cash Settlement</Text>
             </View>
           </View>
 
@@ -87,7 +86,7 @@ export const UnwindModal: React.FC = () => {
             activeOpacity={0.8}
             onPress={() => openUnwindModal(false)}
           >
-            <Text style={styles.cancelButtonText}>Cancel & Keep Earning</Text>
+            <Text style={styles.cancelButtonText}>Cancel & Keep Position</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -98,54 +97,54 @@ export const UnwindModal: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(8, 11, 17, 0.88)",
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: space.lg,
   },
   modalCard: {
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderCard,
+    borderColor: colors.borderSubtle,
     borderRadius: radius.xl,
-    padding: 24,
+    padding: space.xl,
     width: "100%",
-    maxWidth: 400,
+    maxWidth: 380,
     alignItems: "center",
   },
   alertIconBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: colors.crimsonSoft,
     borderWidth: 1,
-    borderColor: "rgba(255, 69, 58, 0.3)",
+    borderColor: "rgba(255, 95, 82, 0.25)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: space.md,
   },
   modalTitle: {
     color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "700",
     letterSpacing: -0.4,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   modalSubtitle: {
     color: colors.textSecondary,
-    fontSize: 12.5,
+    fontSize: 13,
     textAlign: "center",
     lineHeight: 18,
-    marginBottom: 20,
+    marginBottom: space.lg,
   },
   summaryCard: {
-    backgroundColor: colors.surfaceInput,
+    backgroundColor: colors.surfaceCardElevated,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radius.lg,
-    padding: 16,
+    borderRadius: radius.md,
+    padding: space.md,
     width: "100%",
-    marginBottom: 20,
+    marginBottom: space.lg,
   },
   summaryRow: {
     flexDirection: "row",
@@ -158,38 +157,34 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     color: colors.textPrimary,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "600",
   },
   summaryValuePositive: {
     color: colors.lime,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "700",
   },
   confirmButton: {
     backgroundColor: colors.crimson,
-    borderRadius: radius.lg,
-    paddingVertical: 14,
+    borderRadius: radius.pill,
+    height: 48,
     width: "100%",
     alignItems: "center",
-    marginBottom: 10,
-    shadowColor: colors.crimson,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    justifyContent: "center",
+    marginBottom: space.xs,
   },
   confirmButtonText: {
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   cancelButton: {
-    paddingVertical: 10,
+    paddingVertical: space.sm,
   },
   cancelButtonText: {
     color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "500",
   },
 });

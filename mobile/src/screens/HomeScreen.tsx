@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { useAppStore } from "../state/store";
+import { useBackendHealth } from "../services/useBackendData";
 import { colors, radius, space } from "../theme";
 import {
   Shield,
@@ -18,11 +19,10 @@ import {
   ChevronDown,
   TrendingUp,
   Sparkles,
-  ExternalLink,
-  Layers,
-  CheckCircle2,
   Lock,
   ArrowRight,
+  Activity,
+  CheckCircle2,
 } from "lucide-react-native";
 
 export const HomeScreen: React.FC = () => {
@@ -37,11 +37,14 @@ export const HomeScreen: React.FC = () => {
     logout,
   } = useAppStore();
 
+  const { blockNumber, rpcLatencyMs, isConnected } = useBackendHealth();
+
   const formattedAddress = userAddress
     ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
     : "Not Connected";
 
   const hasPosition = !!activePosition && activePosition.state === "ACTIVE";
+  const totalPortfolioValue = walletBalanceAusd + (hasPosition ? (activePosition.depositAmount || 0) : 0);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -49,7 +52,7 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Modern Trust Wallet Top Header */}
+        {/* Uniswap Account Header */}
         <View style={styles.header}>
           {/* Wallet Selector Pill */}
           <TouchableOpacity
@@ -58,98 +61,88 @@ export const HomeScreen: React.FC = () => {
             onPress={logout}
           >
             <View style={styles.walletIconBox}>
-              <Shield size={14} color={colors.lime} strokeWidth={2.4} />
+              <Shield size={13} color={colors.lime} strokeWidth={2.4} />
             </View>
             <Text style={styles.walletAddress}>{formattedAddress}</Text>
-            <ChevronDown size={14} color={colors.textSecondary} />
+            <ChevronDown size={13} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          {/* Network Badge */}
+          {/* Network Badge with Live Telemetry */}
           <View style={styles.networkBadge}>
-            <View style={styles.networkDotPulse} />
+            <View style={[styles.networkDot, isConnected && styles.networkDotLive]} />
             <Text style={styles.networkName}>Monad Testnet</Text>
           </View>
         </View>
 
-        {/* Monumental Balance Card */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <Text style={styles.heroLabel}>Total Earning Balance</Text>
-            <View style={styles.chainPill}>
-              <Text style={styles.chainPillText}>10143</Text>
-            </View>
-          </View>
-
-          <View style={styles.balanceContainer}>
+        {/* Monumental Hero Portfolio Overview */}
+        <View style={styles.portfolioHero}>
+          <Text style={styles.portfolioLabel}>Total Balance</Text>
+          <View style={styles.balanceRow}>
             <Text style={styles.heroBalance}>
-              ${walletBalanceAusd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${totalPortfolioValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
             <Text style={styles.heroCurrency}>AUSD</Text>
           </View>
 
-          {/* Micro Trend / Status Bar */}
-          <View style={styles.metricBanner}>
-            <View style={styles.metricItem}>
-              <View style={styles.statusIndicator}>
-                <View style={[styles.statusDot, hasPosition ? styles.dotGreen : styles.dotIdle]} />
-                <Text style={styles.statusText}>
-                  {hasPosition
-                    ? `Δ = $${activePosition.netDeltaDollars.toFixed(2)} (Neutral)`
-                    : "Ready to Earn"}
-                </Text>
-              </View>
+          {/* Inline Financial Metric Pill */}
+          <View style={styles.metricRow}>
+            <View style={styles.aprChip}>
+              <TrendingUp size={12} color={colors.lime} strokeWidth={2.5} />
+              <Text style={styles.aprText}>
+                +{( (activePosition?.estimatedApr ?? 0.184) * 100 ).toFixed(1)}% APY
+              </Text>
             </View>
 
-            <View style={styles.aprItem}>
-              <TrendingUp size={13} color={colors.lime} strokeWidth={2.5} />
-              <Text style={styles.aprValue}>
-                +{( (activePosition?.estimatedApr ?? 0.184) * 100 ).toFixed(1)}% APY
+            <View style={styles.deltaChip}>
+              <View style={[styles.deltaDot, hasPosition ? styles.deltaDotActive : styles.deltaDotIdle]} />
+              <Text style={styles.deltaText}>
+                {hasPosition ? `Δ = $${activePosition.netDeltaDollars.toFixed(2)} (Neutral)` : "Zero Delta"}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Action Button Row (Trust Wallet Pill/Circle Standard) */}
+        {/* 4-Column Quick Actions Dock (Uniswap Standard) */}
         <View style={styles.actionGrid}>
-          {/* Deposit */}
+          {/* 1. Deposit */}
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={styles.actionItem}
             activeOpacity={0.75}
             onPress={() => setActiveTab("earn")}
           >
             <View style={styles.actionCircle}>
               <ArrowDownLeft size={20} color={colors.textPrimary} strokeWidth={2} />
             </View>
-            <Text style={styles.actionText}>Deposit</Text>
+            <Text style={styles.actionLabel}>Deposit</Text>
           </TouchableOpacity>
 
-          {/* Start Earning */}
+          {/* 2. Earn */}
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={styles.actionItem}
             activeOpacity={0.75}
             onPress={() => setActiveTab("earn")}
           >
-            <View style={[styles.actionCircle, styles.actionCircleHighlight]}>
+            <View style={[styles.actionCircle, styles.actionCircleActive]}>
               <Zap size={20} color={colors.textDark} strokeWidth={2.4} />
             </View>
-            <Text style={[styles.actionText, styles.actionTextHighlight]}>Earn</Text>
+            <Text style={[styles.actionLabel, styles.actionLabelActive]}>Earn</Text>
           </TouchableOpacity>
 
-          {/* Risk Guard */}
+          {/* 3. Security */}
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={styles.actionItem}
             activeOpacity={0.75}
             onPress={() => openRiskGuardModal(true)}
           >
             <View style={styles.actionCircle}>
               <Shield size={20} color={colors.textPrimary} strokeWidth={2} />
             </View>
-            <Text style={styles.actionText}>Security</Text>
+            <Text style={styles.actionLabel}>Security</Text>
           </TouchableOpacity>
 
-          {/* 1-Tap Unwind */}
+          {/* 4. Unwind */}
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={styles.actionItem}
             activeOpacity={0.75}
             disabled={!hasPosition}
             onPress={() => openUnwindModal(true)}
@@ -161,165 +154,136 @@ export const HomeScreen: React.FC = () => {
                 strokeWidth={2}
               />
             </View>
-            <Text style={[styles.actionText, hasPosition && styles.actionTextAlarm]}>
+            <Text style={[styles.actionLabel, hasPosition && styles.actionLabelCritical]}>
               Unwind
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Main Content Area: Zero-Position State OR Dual-Leg Active Breakdown */}
+        {/* Portfolio Content: Empty State OR Dual-Leg Asset List */}
         {!hasPosition ? (
-          <View style={styles.zeroStateCard}>
-            <View style={styles.zeroStateHeader}>
-              <View style={styles.zeroStateIconBox}>
-                <Sparkles size={22} color={colors.lime} strokeWidth={2.2} />
-              </View>
-              <View style={styles.zeroStateTextGroup}>
-                <Text style={styles.zeroStateTitle}>Start Delta-Neutral Yield</Text>
-                <Text style={styles.zeroStateSub}>
-                  Deposit AUSD to lock zero-directional risk and earn funding rates on Monad.
-                </Text>
-              </View>
+          <View style={styles.emptyStateCard}>
+            <View style={styles.emptyIconBox}>
+              <Sparkles size={22} color={colors.lime} strokeWidth={2.2} />
             </View>
 
-            {/* Value Props Row */}
-            <View style={styles.propsList}>
-              <View style={styles.propRow}>
-                <CheckCircle2 size={15} color={colors.lime} strokeWidth={2.2} />
-                <Text style={styles.propText}>Automatic Kuru CLOB spot + Perpl short pair</Text>
-              </View>
-              <View style={styles.propRow}>
-                <CheckCircle2 size={15} color={colors.lime} strokeWidth={2.2} />
-                <Text style={styles.propText}>3-Tier Risk Guard buffer protects against wicks</Text>
-              </View>
-              <View style={styles.propRow}>
-                <CheckCircle2 size={15} color={colors.lime} strokeWidth={2.2} />
-                <Text style={styles.propText}>Hardware WebAuthn PRF session key isolation</Text>
-              </View>
-            </View>
+            <Text style={styles.emptyTitle}>Automated Dollar Carry</Text>
+            <Text style={styles.emptySubtitle}>
+              Earn funding rates by pairing Kuru spot long with Perpl 1x short hedge.
+            </Text>
 
-            {/* Launch CTA */}
             <TouchableOpacity
-              style={styles.primaryCtaBtn}
+              style={styles.emptyCtaButton}
               activeOpacity={0.85}
               onPress={() => setActiveTab("earn")}
             >
-              <Text style={styles.primaryCtaText}>Deposit & Open Hedge</Text>
-              <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
+              <Text style={styles.emptyCtaText}>Deposit & Open Hedge</Text>
+              <ArrowRight size={16} color={colors.textDark} strokeWidth={2.4} />
             </TouchableOpacity>
 
-            {/* Testing Shortcut for Hackathon Judges */}
             <TouchableOpacity
-              style={styles.presetLink}
+              style={styles.presetButton}
               activeOpacity={0.7}
               onPress={loadDemoTestingPreset}
             >
-              <Text style={styles.presetLinkText}>⚡ Load Verified Testnet State Preset</Text>
+              <Text style={styles.presetButtonText}>
+                ⚡ Load Verified Testnet Position (Judges)
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.positionSection}>
+          <View style={styles.positionsSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Dual-Leg Capital Allocation</Text>
-              <View style={styles.auditedBadge}>
-                <Lock size={11} color={colors.agoraGreen} strokeWidth={2.4} />
-                <Text style={styles.auditedText}>CarryLedger Proof</Text>
+              <View style={styles.proofBadge}>
+                <Lock size={10} color={colors.lime} strokeWidth={2.4} />
+                <Text style={styles.proofBadgeText}>CarryLedger Audited</Text>
               </View>
             </View>
 
-            {/* Leg 1: Kuru Spot */}
-            <TouchableOpacity
-              style={styles.legCard}
-              activeOpacity={0.8}
-              onPress={() => setActiveTab("spot")}
-            >
-              <View style={styles.legCardHeader}>
-                <View style={styles.legTitleRow}>
-                  <View style={[styles.venueDot, { backgroundColor: colors.kuruOrange }]} />
-                  <Text style={styles.legTitle}>Leg 1: Kuru Spot (Long)</Text>
+            {/* Asset Rows Container */}
+            <View style={styles.assetListCard}>
+              {/* Row 1: Kuru Spot Long */}
+              <TouchableOpacity
+                style={styles.assetRow}
+                activeOpacity={0.75}
+                onPress={() => setActiveTab("spot")}
+              >
+                <View style={[styles.assetAvatar, { backgroundColor: "rgba(255, 87, 34, 0.12)" }]}>
+                  <Text style={[styles.assetAvatarText, { color: colors.kuruOrange }]}>K</Text>
                 </View>
-                <View style={styles.venueTag}>
-                  <Text style={styles.venueTagText}>Kuru CLOB</Text>
+                <View style={styles.assetMeta}>
+                  <Text style={styles.assetName}>MON Spot Long</Text>
+                  <Text style={styles.assetVenue}>Kuru CLOB</Text>
                 </View>
-              </View>
-
-              <View style={styles.legDetailsGrid}>
-                <View style={styles.gridCell}>
-                  <Text style={styles.cellLabel}>Position Size</Text>
-                  <Text style={styles.cellValue}>
+                <View style={styles.assetValueGroup}>
+                  <Text style={styles.assetDollarValue}>
+                    ${(activePosition.spotQuantity * activePosition.spotPrice).toFixed(2)}
+                  </Text>
+                  <Text style={styles.assetCryptoAmount}>
                     {activePosition.spotQuantity.toFixed(1)} MON
                   </Text>
-                  <Text style={styles.cellSub}>
-                    (${(activePosition.spotQuantity * activePosition.spotPrice).toFixed(2)})
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.hairlineDivider} />
+
+              {/* Row 2: Perpl 1x Short */}
+              <TouchableOpacity
+                style={styles.assetRow}
+                activeOpacity={0.75}
+                onPress={() => openRiskGuardModal(true)}
+              >
+                <View style={[styles.assetAvatar, { backgroundColor: "rgba(131, 110, 249, 0.12)" }]}>
+                  <Text style={[styles.assetAvatarText, { color: colors.monadViolet }]}>P</Text>
+                </View>
+                <View style={styles.assetMeta}>
+                  <Text style={styles.assetName}>MON Perp 1x Short</Text>
+                  <Text style={styles.assetVenue}>Perpl Market 64</Text>
+                </View>
+                <View style={styles.assetValueGroup}>
+                  <Text style={styles.assetDollarValue}>
+                    ${(activePosition.perpQuantity * activePosition.perpMarkPrice).toFixed(2)}
                   </Text>
-                </View>
-
-                <View style={styles.gridCell}>
-                  <Text style={styles.cellLabel}>Entry Price</Text>
-                  <Text style={styles.cellValue}>
-                    ${activePosition.spotPrice.toFixed(2)}
-                  </Text>
-                  <Text style={styles.cellSub}>AUSD</Text>
-                </View>
-
-                <View style={[styles.gridCell, styles.gridCellRight]}>
-                  <Text style={styles.cellLabel}>Structure</Text>
-                  <Text style={[styles.cellValue, { color: colors.lime }]}>
-                    100% Spot
-                  </Text>
-                  <Text style={styles.cellSub}>No Liq Risk</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Leg 2: Perpl Short */}
-            <TouchableOpacity
-              style={styles.legCard}
-              activeOpacity={0.8}
-              onPress={() => openRiskGuardModal(true)}
-            >
-              <View style={styles.legCardHeader}>
-                <View style={styles.legTitleRow}>
-                  <View style={[styles.venueDot, { backgroundColor: colors.monadViolet }]} />
-                  <Text style={styles.legTitle}>Leg 2: Perpl MON Perp (1x Short)</Text>
-                </View>
-                <View style={styles.venueTag}>
-                  <Text style={styles.venueTagText}>Perpl DEX (64)</Text>
-                </View>
-              </View>
-
-              <View style={styles.legDetailsGrid}>
-                <View style={styles.gridCell}>
-                  <Text style={styles.cellLabel}>Hedged Size</Text>
-                  <Text style={styles.cellValue}>
+                  <Text style={styles.assetCryptoAmount}>
                     -{activePosition.perpQuantity.toFixed(1)} MON
                   </Text>
-                  <Text style={styles.cellSub}>
-                    (${(activePosition.perpQuantity * activePosition.perpMarkPrice).toFixed(2)})
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.hairlineDivider} />
+
+              {/* Row 3: 10% Reserve Buffer */}
+              <View style={styles.assetRow}>
+                <View style={[styles.assetAvatar, { backgroundColor: colors.limeSoft }]}>
+                  <Shield size={16} color={colors.lime} strokeWidth={2.4} />
+                </View>
+                <View style={styles.assetMeta}>
+                  <Text style={styles.assetName}>Reserve Buffer (10%)</Text>
+                  <Text style={styles.assetVenue}>
+                    Margin: {(activePosition.marginRatio * 100).toFixed(0)}% · Tier Normal
                   </Text>
                 </View>
-
-                <View style={styles.gridCell}>
-                  <Text style={styles.cellLabel}>Margin Ratio</Text>
-                  <Text style={[styles.cellValue, { color: colors.lime }]}>
-                    {(activePosition.marginRatio * 100).toFixed(1)}%
+                <View style={styles.assetValueGroup}>
+                  <Text style={[styles.assetDollarValue, { color: colors.lime }]}>
+                    ${activePosition.reserveBuffer.toFixed(2)}
                   </Text>
-                  <Text style={styles.cellSub}>Tier: Normal</Text>
-                </View>
-
-                <View style={[styles.gridCell, styles.gridCellRight]}>
-                  <Text style={styles.cellLabel}>Funding Accrued</Text>
-                  <Text style={[styles.cellValue, { color: colors.lime }]}>
-                    +${activePosition.accruedFundingEst.toFixed(2)}
-                  </Text>
-                  <Text style={styles.cellSub}>AUSD</Text>
+                  <Text style={styles.assetCryptoAmount}>Liquid AUSD</Text>
                 </View>
               </View>
-            </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* Space for bottom dock */}
+        {/* Live RPC & Block Status Strip */}
+        <View style={styles.telemetryStrip}>
+          <Activity size={12} color={colors.textTertiary} strokeWidth={2} />
+          <Text style={styles.telemetryText}>
+            Monad Block #{blockNumber} · RPC {rpcLatencyMs}ms · Chain 10143
+          </Text>
+        </View>
+
+        {/* Bottom Spacer */}
         <View style={{ height: 110 }} />
       </ScrollView>
     </SafeAreaView>
@@ -332,22 +296,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? 16 : 8,
+    paddingHorizontal: space.lg,
+    paddingTop: Platform.OS === "android" ? 36 : space.md,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: space.lg,
   },
   walletPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    paddingHorizontal: 12,
+    paddingHorizontal: space.md,
     paddingVertical: 7,
     borderRadius: radius.pill,
   },
@@ -356,79 +320,54 @@ const styles = StyleSheet.create({
   },
   walletAddress: {
     color: colors.textPrimary,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "600",
     marginRight: 4,
   },
   networkBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.limeMuted,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(204, 255, 0, 0.2)",
+    borderColor: colors.borderSubtle,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radius.pill,
   },
-  networkDotPulse: {
+  networkDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.amber,
     marginRight: 6,
   },
+  networkDotLive: {
+    backgroundColor: colors.lime,
+  },
   networkName: {
-    color: colors.lime,
+    color: colors.textSecondary,
     fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.2,
+    fontWeight: "600",
   },
-  heroCard: {
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.borderCard,
-    borderRadius: radius.xl,
-    padding: 22,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  portfolioHero: {
     alignItems: "center",
-    marginBottom: 8,
+    marginVertical: space.md,
   },
-  heroLabel: {
+  portfolioLabel: {
     color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "500",
-    letterSpacing: 0.2,
   },
-  chainPill: {
-    backgroundColor: colors.glassFillLight,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  chainPillText: {
-    color: colors.textTertiary,
-    fontSize: 10.5,
-    fontWeight: "600",
-  },
-  balanceContainer: {
+  balanceRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    marginBottom: 16,
+    marginVertical: space.xs,
   },
   heroBalance: {
     color: colors.textPrimary,
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: "800",
-    letterSpacing: -0.8,
+    letterSpacing: -1,
   },
   heroCurrency: {
     color: colors.textSecondary,
@@ -436,273 +375,242 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 8,
   },
-  metricBanner: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
-  },
-  metricItem: {
+  metricRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: space.sm,
+    marginTop: space.xs,
   },
-  statusIndicator: {
+  aprChip: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.limeSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  dotGreen: {
-    backgroundColor: colors.lime,
-  },
-  dotIdle: {
-    backgroundColor: colors.textTertiary,
-  },
-  statusText: {
+  aprText: {
     color: colors.lime,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  aprItem: {
+  deltaChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.limeMuted,
-    paddingHorizontal: 8,
+    gap: 5,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
   },
-  aprValue: {
-    color: colors.lime,
-    fontSize: 12.5,
-    fontWeight: "700",
-    marginLeft: 4,
+  deltaDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  deltaDotActive: {
+    backgroundColor: colors.lime,
+  },
+  deltaDotIdle: {
+    backgroundColor: colors.textTertiary,
+  },
+  deltaText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "500",
   },
   actionGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 28,
-    paddingHorizontal: 4,
-  },
-  actionBtn: {
+    justifyContent: "space-around",
     alignItems: "center",
-    flex: 1,
+    marginVertical: space.xl,
+    paddingHorizontal: space.sm,
+  },
+  actionItem: {
+    alignItems: "center",
+    width: 68,
   },
   actionCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.surfaceCard,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderCard,
+    borderColor: colors.borderSubtle,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
   },
-  actionCircleHighlight: {
+  actionCircleActive: {
     backgroundColor: colors.lime,
     borderColor: colors.lime,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
   },
   actionCircleDisabled: {
-    opacity: 0.45,
+    opacity: 0.35,
   },
-  actionText: {
-    color: colors.textPrimary,
-    fontSize: 11.5,
-    fontWeight: "600",
-  },
-  actionTextHighlight: {
-    color: colors.lime,
-    fontWeight: "700",
-  },
-  actionTextAlarm: {
-    color: colors.crimson,
-  },
-  zeroStateCard: {
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.borderCard,
-    borderRadius: radius.xl,
-    padding: 22,
-  },
-  zeroStateHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  zeroStateIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.limeMuted,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  zeroStateTextGroup: {
-    flex: 1,
-  },
-  zeroStateTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  zeroStateSub: {
-    color: colors.textSecondary,
-    fontSize: 12.5,
-    lineHeight: 18,
-  },
-  propsList: {
-    marginBottom: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
-  },
-  propRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  propText: {
+  actionLabel: {
     color: colors.textSecondary,
     fontSize: 12,
-    marginLeft: 8,
+    fontWeight: "500",
+    marginTop: 6,
   },
-  primaryCtaBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.lime,
-    borderRadius: radius.lg,
-    paddingVertical: 14,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-  },
-  primaryCtaText: {
-    color: colors.textDark,
-    fontSize: 14,
-    fontWeight: "800",
-    marginRight: 8,
-  },
-  presetLink: {
-    alignItems: "center",
-    marginTop: 14,
-    paddingVertical: 4,
-  },
-  presetLinkText: {
-    color: colors.textSecondary,
-    fontSize: 11.5,
+  actionLabelActive: {
+    color: colors.textPrimary,
     fontWeight: "600",
   },
-  positionSection: {
+  actionLabelCritical: {
+    color: colors.crimson,
+    fontWeight: "600",
+  },
+  emptyStateCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: space.xl,
+    alignItems: "center",
+  },
+  emptyIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.limeSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: space.sm,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
     marginTop: 4,
+    lineHeight: 18,
+    paddingHorizontal: space.sm,
+  },
+  emptyCtaButton: {
+    backgroundColor: colors.lime,
+    height: 46,
+    paddingHorizontal: space.xl,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    marginTop: space.lg,
+  },
+  emptyCtaText: {
+    color: colors.textDark,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  presetButton: {
+    marginTop: space.md,
+  },
+  presetButtonText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  positionsSection: {
+    gap: space.sm,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    paddingHorizontal: space.xs,
+    marginBottom: space.xs,
   },
   sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: -0.2,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
-  auditedBadge: {
+  proofBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0, 210, 106, 0.1)",
+    gap: 4,
+    backgroundColor: colors.limeSoft,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: radius.pill,
   },
-  auditedText: {
-    color: colors.agoraGreen,
-    fontSize: 10.5,
+  proofBadgeText: {
+    fontSize: 10,
     fontWeight: "600",
-    marginLeft: 4,
+    color: colors.lime,
   },
-  legCard: {
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.borderCard,
+  assetListCard: {
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: 18,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    overflow: "hidden",
   },
-  legCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  legTitleRow: {
+  assetRow: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
   },
-  venueDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
+  assetAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: space.md,
   },
-  legTitle: {
-    color: colors.textPrimary,
-    fontSize: 13.5,
-    fontWeight: "700",
+  assetAvatarText: {
+    fontSize: 14,
+    fontWeight: "800",
   },
-  venueTag: {
-    backgroundColor: colors.glassFillLight,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.xs,
-  },
-  venueTagText: {
-    color: colors.textSecondary,
-    fontSize: 10.5,
-    fontWeight: "600",
-  },
-  legDetailsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  gridCell: {
+  assetMeta: {
     flex: 1,
   },
-  gridCellRight: {
+  assetName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  assetVenue: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  assetValueGroup: {
     alignItems: "flex-end",
   },
-  cellLabel: {
-    color: colors.textTertiary,
-    fontSize: 10.5,
-    fontWeight: "500",
-    marginBottom: 3,
-  },
-  cellValue: {
-    color: colors.textPrimary,
-    fontSize: 13.5,
+  assetDollarValue: {
+    fontSize: 14,
     fontWeight: "700",
+    color: colors.textPrimary,
   },
-  cellSub: {
+  assetCryptoAmount: {
+    fontSize: 11,
     color: colors.textSecondary,
-    fontSize: 10.5,
     marginTop: 2,
+  },
+  hairlineDivider: {
+    height: 1,
+    backgroundColor: colors.borderSubtle,
+    marginLeft: 56,
+  },
+  telemetryStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: space.xl,
+  },
+  telemetryText: {
+    fontSize: 11,
+    color: colors.textTertiary,
   },
 });
