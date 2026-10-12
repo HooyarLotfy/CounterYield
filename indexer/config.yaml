@@ -1,5 +1,8 @@
 name: counter-yield-indexer
 description: High-throughput indexing for Counter Yield delta-neutral protocol on Monad Testnet
+field_selection:
+  transaction_fields:
+    - hash
 contracts:
   - name: CarryLedger
     events:

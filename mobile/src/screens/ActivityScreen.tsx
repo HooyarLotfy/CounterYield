@@ -7,51 +7,18 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Linking,
+  ActivityIndicator,
 } from "react-native";
-
-interface ActivityItem {
-  id: string;
-  type: "OPEN_HEDGE" | "REBALANCE" | "FUNDING_ACCRUED" | "GUARD_EVENT" | "UNWIND";
-  title: string;
-  timestamp: string;
-  amount: string;
-  txHash: string;
-  isPositive: boolean;
-}
-
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  {
-    id: "act-1",
-    type: "FUNDING_ACCRUED",
-    title: "Hourly Funding Payment Accrued",
-    timestamp: "12 mins ago",
-    amount: "+$0.85 AUSD",
-    txHash: "0x3e18a902bf81...",
-    isPositive: true,
-  },
-  {
-    id: "act-2",
-    type: "GUARD_EVENT",
-    title: "Risk Guard Check: Normal (Tier 0)",
-    timestamp: "1 hour ago",
-    amount: "Margin: 92.4%",
-    txHash: "0x89dc2410fc33...",
-    isPositive: true,
-  },
-  {
-    id: "act-3",
-    type: "OPEN_HEDGE",
-    title: "Dual-Leg Hedge Opened (Kuru Spot + Perpl Short)",
-    timestamp: "4 hours ago",
-    amount: "$1,000.00 AUSD",
-    txHash: "0x12dc55a004eb...",
-    isPositive: false,
-  },
-];
+import { useActivity } from "../state/hooks/useActivity";
+import { colors, radius, space } from "../theme";
+import { config } from "../config/env";
 
 export const ActivityScreen: React.FC = () => {
+  const { activities, isLoading, refetch } = useActivity();
+
   const handleOpenExplorer = (txHash: string) => {
-    Linking.openURL(`https://testnet.monadscan.com/tx/${txHash}`);
+    const url = `${config.explorerUrl || "https://testnet.monadscan.com"}/tx/${txHash}`;
+    Linking.openURL(url);
   };
 
   return (
@@ -60,12 +27,26 @@ export const ActivityScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Onchain Activity Log</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.screenTitle}>Onchain Activity Log</Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={refetch}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.lime} />
+            ) : (
+              <Text style={styles.refreshText}>↻ Sync</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.screenSubtitle}>
-          Real-time Envio HyperIndex GraphQL audit stream
+          Real-time Envio HyperIndex GraphQL audit stream on Monad Testnet
         </Text>
 
-        {MOCK_ACTIVITIES.map((act) => (
+        {activities.map((act) => (
           <TouchableOpacity
             key={act.id}
             style={styles.activityCard}
@@ -73,8 +54,24 @@ export const ActivityScreen: React.FC = () => {
             onPress={() => handleOpenExplorer(act.txHash)}
           >
             <View style={styles.activityHeader}>
-              <View style={styles.activityTypePill}>
-                <Text style={styles.activityTypeText}>{act.type}</Text>
+              <View
+                style={[
+                  styles.activityTypePill,
+                  act.type === "GUARD_EVENT"
+                    ? styles.pillAmber
+                    : act.type === "OPEN_HEDGE"
+                    ? styles.pillLime
+                    : styles.pillDefault,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.activityTypeText,
+                    act.type === "OPEN_HEDGE" ? styles.textDark : styles.textLight,
+                  ]}
+                >
+                  {act.type}
+                </Text>
               </View>
               <Text style={styles.timestampText}>{act.timestamp}</Text>
             </View>
@@ -92,14 +89,14 @@ export const ActivityScreen: React.FC = () => {
               </Text>
 
               <View style={styles.txHashRow}>
-                <Text style={styles.txHashText}>Tx: {act.txHash}</Text>
+                <Text style={styles.txHashText}>
+                  Tx: {act.txHash.slice(0, 8)}...{act.txHash.slice(-6)}
+                </Text>
                 <Text style={styles.arrowIcon}>↗</Text>
               </View>
             </View>
           </TouchableOpacity>
         ))}
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -108,56 +105,93 @@ export const ActivityScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0A0D14",
+    backgroundColor: colors.bg,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    padding: space.xl,
+    paddingBottom: 90,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   screenTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
+    color: colors.snow,
+    fontSize: 26,
     fontWeight: "800",
-    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  refreshButton: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  refreshText: {
+    color: colors.lime,
+    fontSize: 12,
+    fontWeight: "700",
   },
   screenSubtitle: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 13,
-    marginBottom: 20,
+    marginTop: 4,
+    marginBottom: space.lg,
   },
   activityCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: space.md,
+    marginBottom: space.md,
   },
   activityHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   activityTypePill: {
-    backgroundColor: "rgba(204, 255, 0, 0.12)",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
+  },
+  pillLime: {
+    backgroundColor: colors.lime,
+  },
+  pillAmber: {
+    backgroundColor: "rgba(255, 176, 32, 0.2)",
+    borderWidth: 1,
+    borderColor: colors.amber,
+  },
+  pillDefault: {
+    backgroundColor: colors.surfaceHi,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   activityTypeText: {
-    color: "#CCFF00",
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: "800",
+  },
+  textDark: {
+    color: colors.bg,
+  },
+  textLight: {
+    color: colors.snow,
   },
   timestampText: {
-    color: "#64748B",
+    color: colors.dim,
     fontSize: 11,
+    fontWeight: "500",
   },
   activityTitle: {
-    color: "#FFFFFF",
+    color: colors.snow,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     marginBottom: 12,
   },
   activityFooter: {
@@ -165,30 +199,31 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.05)",
-    paddingTop: 10,
+    borderTopColor: colors.border,
+    paddingTop: 8,
   },
   amountText: {
     fontSize: 13,
     fontWeight: "700",
   },
   amountPositive: {
-    color: "#CCFF00",
+    color: colors.lime,
   },
   amountNeutral: {
-    color: "#E2E8F0",
+    color: colors.muted,
   },
   txHashRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
   },
   txHashText: {
-    color: "#94A3B8",
+    color: colors.dim,
     fontSize: 11,
-    marginRight: 4,
+    fontWeight: "500",
   },
   arrowIcon: {
-    color: "#CCFF00",
+    color: colors.lime,
     fontSize: 12,
     fontWeight: "700",
   },

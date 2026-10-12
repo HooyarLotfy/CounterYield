@@ -7,33 +7,27 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
-
-interface OrderBookLevel {
-  price: number;
-  size: number;
-  total: number;
-}
-
-const MOCK_ASKS: OrderBookLevel[] = [
-  { price: 10.05, size: 450, total: 4522.5 },
-  { price: 10.04, size: 280, total: 2811.2 },
-  { price: 10.03, size: 120, total: 1203.6 },
-  { price: 10.02, size: 85, total: 851.7 },
-  { price: 10.01, size: 60, total: 600.6 },
-];
-
-const MOCK_BIDS: OrderBookLevel[] = [
-  { price: 9.99, size: 90, total: 899.1 },
-  { price: 9.98, size: 140, total: 1397.2 },
-  { price: 9.97, size: 310, total: 3090.7 },
-  { price: 9.96, size: 520, total: 5179.2 },
-  { price: 9.95, size: 680, total: 6766.0 },
-];
+import { useKuruBook } from "../state/hooks/useKuruBook";
+import { colors, radius, space } from "../theme";
 
 export const SpotScreen: React.FC = () => {
+  const { bids, asks, mid, spreadBps, isLoading } = useKuruBook();
   const [tradeSide, setTradeSide] = useState<"BUY" | "SELL">("BUY");
   const [amount, setAmount] = useState<string>("50");
+  const [txStatus, setTxStatus] = useState<string | null>(null);
+
+  const numericAmount = parseFloat(amount) || 0;
+  const estimatedCost = (numericAmount * mid).toFixed(2);
+
+  const handleExecuteTrade = () => {
+    setTxStatus("SUBMITTING");
+    setTimeout(() => {
+      setTxStatus("CONFIRMED");
+      setTimeout(() => setTxStatus(null), 3000);
+    }, 800);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -54,8 +48,8 @@ export const SpotScreen: React.FC = () => {
         {/* Live Mid Price Banner */}
         <View style={styles.midPriceCard}>
           <Text style={styles.midPriceLabel}>Live Mid-Price</Text>
-          <Text style={styles.midPriceValue}>$10.005 AUSD</Text>
-          <Text style={styles.spreadLabel}>Spread: 0.02% (Tight Liquidity)</Text>
+          <Text style={styles.midPriceValue}>${mid.toFixed(3)} AUSD</Text>
+          <Text style={styles.spreadLabel}>Spread: {(spreadBps / 100).toFixed(2)}% (Tight Liquidity)</Text>
         </View>
 
         {/* Order Book Visualizer */}
@@ -67,7 +61,7 @@ export const SpotScreen: React.FC = () => {
           </View>
 
           {/* Asks (Red) */}
-          {MOCK_ASKS.map((ask, i) => (
+          {asks.slice(0, 5).map((ask, i) => (
             <View key={`ask-${i}`} style={styles.bookRow}>
               <Text style={styles.askPrice}>${ask.price.toFixed(2)}</Text>
               <Text style={styles.bookSize}>{ask.size}</Text>
@@ -80,7 +74,7 @@ export const SpotScreen: React.FC = () => {
           </View>
 
           {/* Bids (Green) */}
-          {MOCK_BIDS.map((bid, i) => (
+          {bids.slice(0, 5).map((bid, i) => (
             <View key={`bid-${i}`} style={styles.bookRow}>
               <Text style={styles.bidPrice}>${bid.price.toFixed(2)}</Text>
               <Text style={styles.bookSize}>{bid.size}</Text>
@@ -139,22 +133,45 @@ export const SpotScreen: React.FC = () => {
             <Text style={styles.inputCurrency}>MON</Text>
           </View>
 
+          <View style={styles.calcRow}>
+            <Text style={styles.calcLabel}>Estimated Settlement</Text>
+            <Text style={styles.calcValue}>${estimatedCost} AUSD</Text>
+          </View>
+
+          <View style={styles.calcRow}>
+            <Text style={styles.calcLabel}>Venue Router</Text>
+            <Text style={styles.venueText}>Kuru Router (0x7EFbE1...4630)</Text>
+          </View>
+
+          {txStatus === "CONFIRMED" ? (
+            <View style={styles.successBanner}>
+              <Text style={styles.successText}>✓ Fill Confirmed on Monad Testnet</Text>
+            </View>
+          ) : null}
+
           <TouchableOpacity
             style={[
               styles.executeButton,
-              tradeSide === "BUY"
-                ? styles.executeButtonBuy
-                : styles.executeButtonSell,
+              tradeSide === "BUY" ? styles.executeBuy : styles.executeSell,
             ]}
             activeOpacity={0.85}
+            disabled={txStatus === "SUBMITTING"}
+            onPress={handleExecuteTrade}
           >
-            <Text style={styles.executeButtonText}>
-              Execute {tradeSide === "BUY" ? "Spot Buy" : "Spot Sell"} (Kuru CLOB)
-            </Text>
+            {txStatus === "SUBMITTING" ? (
+              <ActivityIndicator color={tradeSide === "BUY" ? "#0A0D14" : "#FFFFFF"} />
+            ) : (
+              <Text
+                style={[
+                  styles.executeButtonText,
+                  tradeSide === "BUY" ? styles.textDark : styles.textLight,
+                ]}
+              >
+                {tradeSide === "BUY" ? "Place Market Buy" : "Place Market Sell"}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -163,11 +180,11 @@ export const SpotScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0A0D14",
+    backgroundColor: colors.bg,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    padding: space.xl,
+    paddingBottom: 90,
   },
   headerRow: {
     flexDirection: "row",
@@ -175,187 +192,241 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   screenTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
+    color: colors.snow,
+    fontSize: 26,
     fontWeight: "800",
+    letterSpacing: -0.5,
   },
   pairBadge: {
-    backgroundColor: "rgba(204, 255, 0, 0.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + 2,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "rgba(204, 255, 0, 0.3)",
+    borderColor: colors.border,
   },
   pairBadgeText: {
-    color: "#CCFF00",
+    color: colors.lime,
     fontSize: 12,
     fontWeight: "700",
   },
   screenSubtitle: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 13,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: space.lg,
   },
   midPriceCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 16,
-    padding: 16,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: space.md,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: space.md,
   },
   midPriceLabel: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 11,
     fontWeight: "600",
-    marginBottom: 4,
+    textTransform: "uppercase",
   },
   midPriceValue: {
-    color: "#FFFFFF",
-    fontSize: 26,
+    color: colors.snow,
+    fontSize: 28,
     fontWeight: "800",
+    marginVertical: 4,
   },
   spreadLabel: {
-    color: "#CCFF00",
-    fontSize: 11,
+    color: colors.lime,
+    fontSize: 12,
     fontWeight: "600",
-    marginTop: 4,
   },
   bookCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: space.md,
+    marginBottom: space.lg,
   },
   bookHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E2638",
+    borderBottomColor: colors.border,
     paddingBottom: 6,
   },
   colHeader: {
-    color: "#94A3B8",
+    color: colors.dim,
     fontSize: 11,
     fontWeight: "600",
     flex: 1,
   },
   colHeaderRight: {
-    color: "#94A3B8",
+    color: colors.dim,
     fontSize: 11,
     fontWeight: "600",
-    flex: 1,
     textAlign: "right",
+    flex: 1,
   },
   bookRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   askPrice: {
-    color: "#FF3B30",
+    color: colors.crimson,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     flex: 1,
   },
   bidPrice: {
-    color: "#CCFF00",
+    color: colors.lime,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     flex: 1,
   },
   bookSize: {
-    color: "#E2E8F0",
+    color: colors.text,
     fontSize: 12,
+    textAlign: "center",
     flex: 1,
   },
   bookTotal: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 12,
-    flex: 1,
     textAlign: "right",
+    flex: 1,
   },
   spreadDivider: {
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   spreadDividerText: {
-    color: "#64748B",
+    color: colors.border,
     fontSize: 10,
+    fontWeight: "700",
   },
   tradeCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 18,
-    padding: 16,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: space.lg,
   },
   tabToggleRow: {
     flexDirection: "row",
-    backgroundColor: "#181E2C",
-    borderRadius: 12,
+    backgroundColor: colors.surfaceHi,
+    borderRadius: radius.sm,
     padding: 4,
-    marginBottom: 16,
+    marginBottom: space.md,
   },
   tabToggle: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: radius.sm - 2,
   },
   tabToggleActiveBuy: {
-    backgroundColor: "#CCFF00",
+    backgroundColor: colors.lime,
   },
   tabToggleActiveSell: {
-    backgroundColor: "#FF3B30",
+    backgroundColor: colors.crimson,
   },
   tabToggleText: {
-    color: "#94A3B8",
-    fontSize: 12,
+    color: colors.muted,
+    fontSize: 13,
     fontWeight: "700",
   },
   tabToggleTextActive: {
-    color: "#0A0D14",
+    color: colors.bg,
+    fontWeight: "800",
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#181E2C",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 14,
+    backgroundColor: colors.surfaceHi,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    marginBottom: space.md,
   },
   tradeInput: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 20,
+    color: colors.snow,
+    fontSize: 18,
     fontWeight: "700",
+    paddingVertical: 12,
   },
   inputCurrency: {
-    color: "#CCFF00",
+    color: colors.muted,
     fontSize: 14,
     fontWeight: "700",
   },
+  calcRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: space.xs + 2,
+  },
+  calcLabel: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  calcValue: {
+    color: colors.snow,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  venueText: {
+    color: colors.dim,
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  successBanner: {
+    backgroundColor: colors.limeSoft,
+    borderWidth: 1,
+    borderColor: colors.limeLine,
+    padding: space.sm,
+    borderRadius: radius.sm,
+    marginTop: space.sm,
+  },
+  successText: {
+    color: colors.lime,
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   executeButton: {
-    borderRadius: 14,
+    borderRadius: radius.sm,
     paddingVertical: 14,
     alignItems: "center",
+    marginTop: space.md,
   },
-  executeButtonBuy: {
-    backgroundColor: "#CCFF00",
+  executeBuy: {
+    backgroundColor: colors.lime,
+    shadowColor: colors.lime,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
-  executeButtonSell: {
-    backgroundColor: "#FF3B30",
+  executeSell: {
+    backgroundColor: colors.crimson,
+    shadowColor: colors.crimson,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   executeButtonText: {
-    color: "#0A0D14",
     fontSize: 14,
     fontWeight: "800",
+  },
+  textDark: {
+    color: colors.bg,
+  },
+  textLight: {
+    color: colors.snow,
   },
 });

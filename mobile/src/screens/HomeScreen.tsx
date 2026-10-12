@@ -11,12 +11,17 @@ import { useAppStore } from "../state/store";
 
 export const HomeScreen: React.FC = () => {
   const {
+    userAddress,
     walletBalanceAusd,
     activePosition,
     setActiveTab,
     openUnwindModal,
     openRiskGuardModal,
   } = useAppStore();
+
+  const formattedAddress = userAddress
+    ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
+    : "0x742d...f44e";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -28,7 +33,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.avatarPill}>
             <Text style={styles.shieldIcon}>🛡</Text>
-            <Text style={styles.addressText}>0x742d...f44e</Text>
+            <Text style={styles.addressText}>{formattedAddress}</Text>
           </View>
           <View style={styles.networkBadge}>
             <View style={styles.networkDot} />

@@ -7,13 +7,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from "react-native";
-import { useAppStore } from "../state/store";
+import { usePosition } from "../state/hooks/usePosition";
+import { colors, radius, space } from "../theme";
 
 export const PositionScreen: React.FC = () => {
-  const { activePosition, openUnwindModal } = useAppStore();
+  const { position, openUnwindModal, openRiskGuardModal } = usePosition();
 
-  const marginRatio = activePosition?.marginRatio ?? 0.92;
-  const currentTier = activePosition?.tier ?? "NORMAL";
+  const marginRatio = position?.marginRatio ?? 0.92;
+  const currentTier = position?.tier ?? "NORMAL";
+  const distanceToLiq = position?.distanceToLiquidationPercent ?? 78.4;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -21,6 +23,21 @@ export const PositionScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Back Button & Header */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.8}
+            onPress={() => openRiskGuardModal(false)}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <View style={styles.headerBadge}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.headerBadgeText}>Defense Active</Text>
+          </View>
+        </View>
+
         <Text style={styles.screenTitle}>Position & Risk Guard</Text>
         <Text style={styles.screenSubtitle}>
           Real-time margin defense & liquidation immunity monitor
@@ -29,16 +46,14 @@ export const PositionScreen: React.FC = () => {
         {/* Distance to Liquidation Gauge */}
         <View style={styles.gaugeCard}>
           <Text style={styles.gaugeLabel}>Distance to Liquidation</Text>
-          <Text style={styles.gaugePercent}>
-            {activePosition?.distanceToLiquidationPercent ?? 78.4}%
-          </Text>
+          <Text style={styles.gaugePercent}>{distanceToLiq}%</Text>
           <Text style={styles.gaugeStatus}>Safe Zone (No Liquidation Threat)</Text>
 
           <View style={styles.progressBarBackground}>
             <View
               style={[
                 styles.progressBarFill,
-                { width: `${activePosition?.distanceToLiquidationPercent ?? 78.4}%` },
+                { width: `${Math.min(100, Math.max(0, distanceToLiq))}%` },
               ]}
             />
           </View>
@@ -77,13 +92,13 @@ export const PositionScreen: React.FC = () => {
         >
           <View style={styles.tierHeader}>
             <View style={styles.tierPillAmber}>
-              <Text style={styles.tierPillText}>TIER 2 | PROPORTIONAL DELEVERAGE</Text>
+              <Text style={styles.tierPillText}>TIER 2 | DELEVERAGE</Text>
             </View>
             <Text style={styles.tierRatioText}>Margin Ratio: 40% - 25%</Text>
           </View>
           <Text style={styles.tierDesc}>
-            Shrinks both spot and perp short legs proportionally to restore 100% margin
-            ratio. Completely eliminates naked-short drift risk.
+            Reserve depleted. Automatically deleverages 20% of spot MON on Kuru and closes 20%
+            of Perpl short. Restores 100% margin buffer.
           </Text>
         </View>
 
@@ -101,21 +116,19 @@ export const PositionScreen: React.FC = () => {
             <Text style={styles.tierRatioText}>Margin Ratio: &lt; 25%</Text>
           </View>
           <Text style={styles.tierDesc}>
-            Triggered across 2 consecutive blocks. Closes Perpl short with reduce-only
-            market buy, liquidates Kuru spot, and locks 100% AUSD.
+            Requires 2 consecutive blocks below 25%. Fully unwinds 100% of remaining position to
+            AUSD before exchange liquidation occurs. Zero debt.
           </Text>
         </View>
 
-        {/* Emergency 1-Tap Unwind Button */}
+        {/* Manual 1-Tap Unwind Action */}
         <TouchableOpacity
           style={styles.unwindButton}
           activeOpacity={0.85}
           onPress={() => openUnwindModal(true)}
         >
-          <Text style={styles.unwindButtonText}>🔒 Guaranteed 1-Tap Unwind</Text>
+          <Text style={styles.unwindButtonText}>Initiate 1-Tap Unwind</Text>
         </TouchableOpacity>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -124,79 +137,124 @@ export const PositionScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0A0D14",
+    backgroundColor: colors.bg,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    padding: space.xl,
+    paddingBottom: 60,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: space.md,
+  },
+  backButton: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    color: colors.lime,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  headerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.limeSoft,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.limeLine,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.lime,
+    marginRight: 6,
+  },
+  headerBadgeText: {
+    color: colors.lime,
+    fontSize: 12,
+    fontWeight: "700",
   },
   screenTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
+    color: colors.snow,
+    fontSize: 26,
     fontWeight: "800",
-    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   screenSubtitle: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 13,
-    marginBottom: 20,
+    marginTop: 4,
+    marginBottom: space.lg,
   },
   gaugeCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 20,
-    padding: 20,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: space.lg,
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: space.xl,
   },
   gaugeLabel: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 12,
     fontWeight: "600",
-    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   gaugePercent: {
-    color: "#CCFF00",
-    fontSize: 44,
-    fontWeight: "800",
+    color: colors.lime,
+    fontSize: 48,
+    fontWeight: "900",
+    marginTop: 8,
     letterSpacing: -1,
   },
   gaugeStatus: {
-    color: "#E2E8F0",
+    color: colors.snow,
     fontSize: 13,
     fontWeight: "600",
+    marginTop: 4,
     marginBottom: 16,
   },
   progressBarBackground: {
     width: "100%",
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#181E2C",
+    backgroundColor: colors.surfaceHi,
     overflow: "hidden",
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#CCFF00",
+    backgroundColor: colors.lime,
     borderRadius: 4,
   },
   sectionHeader: {
-    color: "#FFFFFF",
+    color: colors.snow,
     fontSize: 15,
     fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: space.md,
   },
   tierCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: space.lg,
+    marginBottom: space.md,
   },
   tierCardActiveGreen: {
-    borderColor: "rgba(204, 255, 0, 0.4)",
-    backgroundColor: "rgba(204, 255, 0, 0.04)",
+    borderColor: colors.limeLine,
+    backgroundColor: colors.limeSoft,
   },
   tierCardActiveAmber: {
     borderColor: "rgba(255, 176, 32, 0.5)",
@@ -210,13 +268,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: space.sm,
   },
   tierPillGreen: {
-    backgroundColor: "rgba(204, 255, 0, 0.15)",
+    backgroundColor: colors.limeSoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.limeLine,
   },
   tierPillAmber: {
     backgroundColor: "rgba(255, 176, 32, 0.15)",
@@ -231,33 +291,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tierPillText: {
-    color: "#FFFFFF",
+    color: colors.snow,
     fontSize: 10,
     fontWeight: "700",
   },
   tierRatioText: {
-    color: "#94A3B8",
+    color: colors.muted,
     fontSize: 11,
     fontWeight: "600",
   },
   tierDesc: {
-    color: "#94A3B8",
+    color: colors.text,
     fontSize: 12,
     lineHeight: 18,
   },
   unwindButton: {
-    backgroundColor: "#FF3B30",
-    borderRadius: 16,
-    paddingVertical: 16,
+    backgroundColor: colors.crimson,
+    borderRadius: radius.md,
+    paddingVertical: space.md,
     alignItems: "center",
-    marginTop: 12,
-    shadowColor: "#FF3B30",
+    marginTop: space.md,
+    shadowColor: colors.crimson,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
   },
   unwindButtonText: {
-    color: "#FFFFFF",
+    color: colors.snow,
     fontSize: 15,
     fontWeight: "800",
   },
