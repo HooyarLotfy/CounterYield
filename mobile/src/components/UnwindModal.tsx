@@ -1,13 +1,21 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from "react-native";
 import { useAppStore } from "../state/store";
+import { usePosition } from "../state/hooks/usePosition";
 
 export const UnwindModal: React.FC = () => {
-  const { isUnwindModalOpen, openUnwindModal, resetPosition } = useAppStore();
+  const { isUnwindModalOpen, openUnwindModal } = useAppStore();
+  const { executeUnwind } = usePosition();
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const handleConfirmUnwind = () => {
-    resetPosition();
-    openUnwindModal(false);
+  const handleConfirmUnwind = async () => {
+    setIsSubmitting(true);
+    try {
+      await executeUnwind("MANUAL_1_TAP_UNWIND");
+    } finally {
+      setIsSubmitting(false);
+      openUnwindModal(false);
+    }
   };
 
   return (
@@ -47,9 +55,14 @@ export const UnwindModal: React.FC = () => {
           <TouchableOpacity
             style={styles.confirmButton}
             activeOpacity={0.85}
+            disabled={isSubmitting}
             onPress={handleConfirmUnwind}
           >
-            <Text style={styles.confirmButtonText}>Execute Immediate Unwind</Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.confirmButtonText}>Execute Immediate Unwind</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
