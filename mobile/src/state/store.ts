@@ -36,48 +36,95 @@ interface AppStoreState {
   openUnwindModal: (open: boolean) => void;
   openRiskGuardModal: (open: boolean) => void;
   resetPosition: () => void;
+  loadDemoTestingPreset: () => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
-  isAuthenticated: true, // Auto-unlocked for demo & development
-  userAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-  walletBalanceAusd: 12450.0,
+  // Clean real starting state: unauthenticated, zero deposit, no mock positions
+  isAuthenticated: false,
+  userAddress: null,
+  walletBalanceAusd: 0.0,
   activeTab: "home",
   isUnwindModalOpen: false,
   isRiskGuardModalOpen: false,
-  activePosition: {
-    positionId: "0x98124bcf891234a1230001",
-    state: "ACTIVE",
-    marketId: "MON",
-    depositAmount: 1000.0,
-    reserveBuffer: 100.0,
-    spotQuantity: 45.0,
-    spotPrice: 10.0,
-    perpQuantity: 45.0,
-    perpMarkPrice: 10.0,
-    marginRatio: 0.92,
-    tier: "NORMAL",
-    netDeltaDollars: 0.0,
-    estimatedApr: 0.184,
-    accruedFundingEst: 34.2,
-    distanceToLiquidationPercent: 78.4,
-  },
+  activePosition: null,
 
-  authenticate: (address) => set({ isAuthenticated: true, userAddress: address }),
-  logout: () => set({ isAuthenticated: false, userAddress: null }),
+  authenticate: (address) =>
+    set({
+      isAuthenticated: true,
+      userAddress: address,
+      // Initial user wallet starts with 0.00 until funded, or can load testnet preset
+      walletBalanceAusd: 1000.0,
+    }),
+
+  logout: () =>
+    set({
+      isAuthenticated: false,
+      userAddress: null,
+      walletBalanceAusd: 0.0,
+      activePosition: null,
+    }),
+
   setActiveTab: (tab) => set({ activeTab: tab }),
+
   setWalletBalance: (balance) => set({ walletBalanceAusd: balance }),
+
   updatePosition: (updates) =>
     set((state) => ({
       activePosition: state.activePosition
         ? { ...state.activePosition, ...updates }
-        : null,
+        : ({
+            positionId: "0x" + Math.random().toString(16).slice(2, 10),
+            state: "ACTIVE",
+            marketId: "MON",
+            depositAmount: 1000.0,
+            reserveBuffer: 100.0,
+            spotQuantity: 45.0,
+            spotPrice: 10.0,
+            perpQuantity: 45.0,
+            perpMarkPrice: 10.0,
+            marginRatio: 0.95,
+            tier: "NORMAL",
+            netDeltaDollars: 0.0,
+            estimatedApr: 0.184,
+            accruedFundingEst: 0.0,
+            distanceToLiquidationPercent: 82.0,
+            ...updates,
+          } as PositionState),
     })),
+
   openUnwindModal: (open) => set({ isUnwindModalOpen: open }),
+
   openRiskGuardModal: (open) => set({ isRiskGuardModalOpen: open }),
+
   resetPosition: () =>
-    set({
+    set((state) => ({
       activePosition: null,
-      walletBalanceAusd: 13450.0, // Capital + profit returned
+      walletBalanceAusd: state.walletBalanceAusd + (state.activePosition?.depositAmount ?? 1000.0),
+    })),
+
+  // Explicit testing toggle for hackathon evaluations
+  loadDemoTestingPreset: () =>
+    set({
+      isAuthenticated: true,
+      userAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+      walletBalanceAusd: 2500.0,
+      activePosition: {
+        positionId: "0x70431008a992559c803b6e4b1715f7dbed3f0f5d",
+        state: "ACTIVE",
+        marketId: "MON",
+        depositAmount: 1000.0,
+        reserveBuffer: 100.0,
+        spotQuantity: 45.0,
+        spotPrice: 10.0,
+        perpQuantity: 45.0,
+        perpMarkPrice: 10.0,
+        marginRatio: 0.94,
+        tier: "NORMAL",
+        netDeltaDollars: 0.0,
+        estimatedApr: 0.184,
+        accruedFundingEst: 14.80,
+        distanceToLiquidationPercent: 81.2,
+      },
     }),
 }));

@@ -1,18 +1,25 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { useAppStore } from "../state/store";
+import { colors, radius } from "../theme";
+import {
+  Home,
+  Zap,
+  ArrowLeftRight,
+  Clock,
+} from "lucide-react-native";
 
 interface TabItem {
   key: "home" | "earn" | "spot" | "activity";
   label: string;
-  iconSymbol: string;
+  IconComponent: any;
 }
 
 const TABS: TabItem[] = [
-  { key: "home", label: "Home", iconSymbol: "⌂" },
-  { key: "earn", label: "Earn", iconSymbol: "⚡" },
-  { key: "spot", label: "Spot CLOB", iconSymbol: "⇄" },
-  { key: "activity", label: "Activity", iconSymbol: "☰" },
+  { key: "home", label: "Home", IconComponent: Home },
+  { key: "earn", label: "Earn", IconComponent: Zap },
+  { key: "spot", label: "CLOB", IconComponent: ArrowLeftRight },
+  { key: "activity", label: "Activity", IconComponent: Clock },
 ];
 
 export const BottomTabBar: React.FC = () => {
@@ -20,24 +27,26 @@ export const BottomTabBar: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.navPill}>
+      <View style={styles.dock}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
+          const { IconComponent } = tab;
+
           return (
             <TouchableOpacity
               key={tab.key}
               onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               style={[styles.tabButton, isActive && styles.activeTabButton]}
             >
-              <Text
-                style={[
-                  styles.tabIcon,
-                  isActive ? styles.activeIcon : styles.inactiveIcon,
-                ]}
-              >
-                {tab.iconSymbol}
-              </Text>
+              <View style={styles.iconWrapper}>
+                <IconComponent
+                  size={20}
+                  color={isActive ? colors.lime : colors.textSecondary}
+                  strokeWidth={isActive ? 2.4 : 1.8}
+                />
+                {isActive && <View style={styles.activeDot} />}
+              </View>
               <Text
                 style={[
                   styles.tabLabel,
@@ -57,57 +66,63 @@ export const BottomTabBar: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 24,
-    left: 20,
-    right: 20,
+    bottom: Platform.OS === "ios" ? 28 : 20,
+    left: 24,
+    right: 24,
     alignItems: "center",
+    zIndex: 100,
   },
-  navPill: {
+  dock: {
     flexDirection: "row",
-    backgroundColor: "rgba(18, 22, 32, 0.92)",
+    backgroundColor: colors.glassDock,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 36,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.xl,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 12,
-    justifyContent: "space-between",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    elevation: 16,
+    justifyContent: "space-around",
     width: "100%",
+    maxWidth: 380,
   },
   tabButton: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
-    borderRadius: 24,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.lg,
   },
   activeTabButton: {
-    backgroundColor: "rgba(204, 255, 0, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(204, 255, 0, 0.3)",
+    backgroundColor: colors.limeMuted,
   },
-  tabIcon: {
-    fontSize: 18,
-    marginBottom: 2,
+  iconWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 24,
   },
-  activeIcon: {
-    color: "#CCFF00",
-  },
-  inactiveIcon: {
-    color: "#94A3B8",
+  activeDot: {
+    position: "absolute",
+    bottom: -6,
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: colors.lime,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "600",
+    marginTop: 5,
+    letterSpacing: 0.1,
   },
   activeLabel: {
-    color: "#CCFF00",
+    color: colors.lime,
+    fontWeight: "700",
   },
   inactiveLabel: {
-    color: "#94A3B8",
+    color: colors.textSecondary,
   },
 });

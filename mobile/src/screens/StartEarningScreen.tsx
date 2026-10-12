@@ -8,9 +8,20 @@ import {
   SafeAreaView,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { backendApi } from "../services/backendApi";
+import { colors, radius, space } from "../theme";
+import {
+  Zap,
+  Shield,
+  ArrowRight,
+  Sparkles,
+  Info,
+  Clock,
+  ChevronLeft,
+} from "lucide-react-native";
 
 export const StartEarningScreen: React.FC = () => {
   const { userAddress, setActiveTab, updatePosition } = useAppStore();
@@ -64,12 +75,27 @@ export const StartEarningScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Start Earning Yield</Text>
+        {/* Header */}
+        <View style={styles.topHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.7}
+            onPress={() => setActiveTab("home")}
+          >
+            <ChevronLeft size={20} color={colors.textPrimary} />
+            <Text style={styles.backButtonText}>Home</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTag}>
+            <Text style={styles.headerTagText}>1-Tap Basis Sizer</Text>
+          </View>
+        </View>
+
+        <Text style={styles.screenTitle}>Start Earning</Text>
         <Text style={styles.screenSubtitle}>
-          Automated delta-neutral basis carry on Monad Testnet
+          Enter AUSD deposit amount. The protocol automatically hedges spot & short legs with a 10% reserve.
         </Text>
 
-        {/* Input Card */}
+        {/* Deposit Input Card */}
         <View style={styles.inputCard}>
           <Text style={styles.inputLabel}>Deposit Amount</Text>
           <View style={styles.inputRow}>
@@ -79,9 +105,11 @@ export const StartEarningScreen: React.FC = () => {
               value={depositAmount}
               onChangeText={setDepositAmount}
               placeholder="0.00"
-              placeholderTextColor="#475569"
+              placeholderTextColor={colors.textMuted}
             />
-            <Text style={styles.inputCurrency}>AUSD</Text>
+            <View style={styles.currencyBadge}>
+              <Text style={styles.inputCurrency}>AUSD</Text>
+            </View>
           </View>
 
           {/* Quick preset chips */}
@@ -94,6 +122,7 @@ export const StartEarningScreen: React.FC = () => {
                   depositAmount === preset && styles.presetChipActive,
                 ]}
                 onPress={() => setDepositAmount(preset)}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[
@@ -108,68 +137,93 @@ export const StartEarningScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Capital Allocation Breakdown */}
+        {/* Dual-Leg Sizing Breakdown Card */}
         <View style={styles.breakdownCard}>
-          <Text style={styles.cardHeader}>Sizing & Reserve Allocation</Text>
+          <Text style={styles.cardHeader}>Automated Capital Allocation</Text>
 
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>10% Liquidity Reserve (Risk Guard)</Text>
-            <Text style={styles.rowValueChartreuse}>${reserveBuffer.toFixed(2)} AUSD</Text>
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Kuru CLOB Spot Allocation (1x Long)</Text>
-            <Text style={styles.rowValue}>${spotAlloc.toFixed(2)} AUSD</Text>
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Perpl DEX Margin Allocation (1x Short)</Text>
-            <Text style={styles.rowValue}>${perpAlloc.toFixed(2)} AUSD</Text>
+          <View style={styles.allocRow}>
+            <View style={styles.allocLeft}>
+              <View style={[styles.allocDot, { backgroundColor: colors.agoraGreen }]} />
+              <View>
+                <Text style={styles.allocTitle}>10% Liquidity Reserve</Text>
+                <Text style={styles.allocDesc}>Absorbs price wicks & top-ups</Text>
+              </View>
+            </View>
+            <Text style={styles.allocAmount}>${reserveBuffer.toFixed(2)} AUSD</Text>
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.row}>
-            <Text style={styles.rowLabelHighlight}>Net Delta Exposure</Text>
-            <Text style={styles.rowValueHighlight}>Δ ≈ $0.00 (Delta Neutral)</Text>
+          <View style={styles.allocRow}>
+            <View style={styles.allocLeft}>
+              <View style={[styles.allocDot, { backgroundColor: colors.kuruOrange }]} />
+              <View>
+                <Text style={styles.allocTitle}>Kuru Spot MON (Long)</Text>
+                <Text style={styles.allocDesc}>Spot asset backing (45%)</Text>
+              </View>
+            </View>
+            <Text style={styles.allocAmount}>${spotAlloc.toFixed(2)} AUSD</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.allocRow}>
+            <View style={styles.allocLeft}>
+              <View style={[styles.allocDot, { backgroundColor: colors.monadViolet }]} />
+              <View>
+                <Text style={styles.allocTitle}>Perpl 1x Short (Market 64)</Text>
+                <Text style={styles.allocDesc}>Delta neutralization hedge (45%)</Text>
+              </View>
+            </View>
+            <Text style={styles.allocAmount}>${perpAlloc.toFixed(2)} AUSD</Text>
           </View>
         </View>
 
-        {/* Break-Even Calculator */}
-        <View style={styles.breakdownCard}>
-          <Text style={styles.cardHeader}>Break-Even Calculator</Text>
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Est. Round-Trip Taker Fees (0.20%)</Text>
-            <Text style={styles.rowValue}>-${roundTripCost.toFixed(2)} AUSD</Text>
+        {/* Break-Even Calculator Card */}
+        <View style={styles.estimatorCard}>
+          <View style={styles.estimatorHeader}>
+            <Clock size={16} color={colors.lime} strokeWidth={2.4} />
+            <Text style={styles.estimatorTitle}>Break-Even Estimator</Text>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Est. Daily Carry Accrual</Text>
-            <Text style={styles.rowValueChartreuse}>+${dailyCarry.toFixed(2)} AUSD/day</Text>
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabelHighlight}>Time to Full Break-Even</Text>
-            <Text style={styles.rowValueHighlight}>{breakEvenDays} Days</Text>
+          <View style={styles.estimatorRow}>
+            <View>
+              <Text style={styles.estimatorLabel}>Est. Round-Trip Fees</Text>
+              <Text style={styles.estimatorValue}>-${roundTripCost.toFixed(2)} AUSD</Text>
+            </View>
+            <View style={{ alignItems: "center" }}>
+              <Text style={styles.estimatorLabel}>Daily Carry Rate</Text>
+              <Text style={[styles.estimatorValue, { color: colors.lime }]}>
+                +${dailyCarry.toFixed(2)}/day
+              </Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.estimatorLabel}>Days to Profit</Text>
+              <Text style={[styles.estimatorValue, { color: colors.lime }]}>
+                {breakEvenDays} Days
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* 1-Tap Execution CTA */}
+        {/* Submit Button */}
         <TouchableOpacity
-          style={styles.ctaButton}
+          style={styles.submitBtn}
           activeOpacity={0.85}
-          disabled={isSubmitting}
+          disabled={isSubmitting || numericDeposit <= 0}
           onPress={handleStartEarning}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#0A0D14" />
+            <ActivityIndicator color={colors.textDark} />
           ) : (
-            <Text style={styles.ctaButtonText}>1-Tap Open Hedge Position</Text>
+            <>
+              <Zap size={20} color={colors.textDark} strokeWidth={2.4} />
+              <Text style={styles.submitBtnText}>1-Tap Open Hedge Position</Text>
+            </>
           )}
         </TouchableOpacity>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -178,33 +232,62 @@ export const StartEarningScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0A0D14",
+    backgroundColor: colors.canvas,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: Platform.OS === "android" ? 16 : 8,
+  },
+  topHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  headerTag: {
+    backgroundColor: colors.limeMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+  },
+  headerTagText: {
+    color: colors.lime,
+    fontSize: 11,
+    fontWeight: "700",
   },
   screenTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
+    color: colors.textPrimary,
+    fontSize: 26,
     fontWeight: "800",
+    letterSpacing: -0.6,
     marginBottom: 4,
   },
   screenSubtitle: {
-    color: "#94A3B8",
+    color: colors.textSecondary,
     fontSize: 13,
+    lineHeight: 18,
     marginBottom: 20,
   },
   inputCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 20,
-    padding: 18,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
+    padding: 20,
     marginBottom: 16,
   },
   inputLabel: {
-    color: "#94A3B8",
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 10,
@@ -213,18 +296,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    backgroundColor: colors.surfaceInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginBottom: 16,
   },
   textInput: {
-    color: "#FFFFFF",
-    fontSize: 32,
-    fontWeight: "800",
     flex: 1,
+    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    padding: 0,
+  },
+  currencyBadge: {
+    backgroundColor: colors.glassFillLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
   },
   inputCurrency: {
-    color: "#CCFF00",
-    fontSize: 18,
-    fontWeight: "800",
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "700",
   },
   presetRow: {
     flexDirection: "row",
@@ -232,88 +328,126 @@ const styles = StyleSheet.create({
   },
   presetChip: {
     flex: 1,
-    backgroundColor: "#181E2C",
-    paddingVertical: 8,
-    borderRadius: 12,
     alignItems: "center",
+    backgroundColor: colors.surfaceInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.md,
+    paddingVertical: 8,
     marginHorizontal: 3,
   },
   presetChipActive: {
-    backgroundColor: "rgba(204, 255, 0, 0.15)",
-    borderWidth: 1,
-    borderColor: "#CCFF00",
+    backgroundColor: colors.limeMuted,
+    borderColor: colors.lime,
   },
   presetText: {
-    color: "#94A3B8",
-    fontSize: 12,
+    color: colors.textSecondary,
+    fontSize: 12.5,
     fontWeight: "600",
   },
   presetTextActive: {
-    color: "#CCFF00",
+    color: colors.lime,
     fontWeight: "700",
   },
   breakdownCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 20,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
     padding: 18,
     marginBottom: 16,
   },
   cardHeader: {
-    color: "#FFFFFF",
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
     marginBottom: 14,
   },
-  row: {
+  allocRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    alignItems: "center",
+    paddingVertical: 4,
   },
-  rowLabel: {
-    color: "#94A3B8",
-    fontSize: 12,
+  allocLeft: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  rowValue: {
-    color: "#FFFFFF",
-    fontSize: 12,
+  allocDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  allocTitle: {
+    color: colors.textPrimary,
+    fontSize: 13,
     fontWeight: "600",
   },
-  rowValueChartreuse: {
-    color: "#CCFF00",
-    fontSize: 12,
+  allocDesc: {
+    color: colors.textSecondary,
+    fontSize: 11,
+  },
+  allocAmount: {
+    color: colors.textPrimary,
+    fontSize: 13.5,
     fontWeight: "700",
   },
   divider: {
     height: 1,
-    backgroundColor: "#1E2638",
+    backgroundColor: colors.borderSubtle,
     marginVertical: 10,
   },
-  rowLabelHighlight: {
-    color: "#FFFFFF",
-    fontSize: 13,
+  estimatorCard: {
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
+    padding: 18,
+    marginBottom: 20,
+  },
+  estimatorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  estimatorTitle: {
+    color: colors.textPrimary,
+    fontSize: 13.5,
+    fontWeight: "700",
+    marginLeft: 8,
+  },
+  estimatorRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  estimatorLabel: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  estimatorValue: {
+    color: colors.textPrimary,
+    fontSize: 13.5,
     fontWeight: "700",
   },
-  rowValueHighlight: {
-    color: "#CCFF00",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  ctaButton: {
-    backgroundColor: "#CCFF00",
-    borderRadius: 16,
-    paddingVertical: 16,
+  submitBtn: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-    shadowColor: "#CCFF00",
+    justifyContent: "center",
+    backgroundColor: colors.lime,
+    borderRadius: radius.lg,
+    paddingVertical: 16,
+    shadowColor: colors.lime,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  ctaButtonText: {
-    color: "#0A0D14",
-    fontSize: 15,
+  submitBtnText: {
+    color: colors.textDark,
+    fontSize: 14.5,
     fontWeight: "800",
+    marginLeft: 8,
   },
 });

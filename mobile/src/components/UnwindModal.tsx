@@ -1,12 +1,25 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+} from "react-native";
 import { useAppStore } from "../state/store";
 import { usePosition } from "../state/hooks/usePosition";
+import { colors, radius, space } from "../theme";
+import { XOctagon, AlertTriangle, ShieldCheck } from "lucide-react-native";
 
 export const UnwindModal: React.FC = () => {
-  const { isUnwindModalOpen, openUnwindModal } = useAppStore();
+  const { isUnwindModalOpen, openUnwindModal, activePosition } = useAppStore();
   const { executeUnwind } = usePosition();
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const deposit = activePosition?.depositAmount ?? 1000.0;
+  const accrued = activePosition?.accruedFundingEst ?? 0.0;
+  const totalReturn = deposit + accrued;
 
   const handleConfirmUnwind = async () => {
     setIsSubmitting(true);
@@ -28,27 +41,31 @@ export const UnwindModal: React.FC = () => {
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <View style={styles.alertIconBadge}>
-            <Text style={styles.alertIcon}>🔒</Text>
+            <XOctagon size={28} color={colors.crimson} strokeWidth={2.2} />
           </View>
 
           <Text style={styles.modalTitle}>Confirm 1-Tap Unwind</Text>
           <Text style={styles.modalSubtitle}>
-            This action instantly liquidates your spot leg on Kuru CLOB and closes your
-            short leg on Perpl DEX with a reduce-only market order.
+            Instantly market-sells your spot MON on Kuru CLOB and closes your short leg on Perpl DEX.
+            All capital reverts immediately to 100% unencumbered AUSD.
           </Text>
 
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Capital to Return</Text>
-              <Text style={styles.summaryValuePositive}>$1,034.20 AUSD</Text>
+              <Text style={styles.summaryValuePositive}>
+                ${totalReturn.toFixed(2)} AUSD
+              </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Realized Carry Profit</Text>
-              <Text style={styles.summaryValuePositive}>+$34.20 AUSD</Text>
+              <Text style={styles.summaryLabel}>Accrued Carry Profit</Text>
+              <Text style={styles.summaryValuePositive}>
+                +${accrued.toFixed(2)} AUSD
+              </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Residual Risk</Text>
-              <Text style={styles.summaryValue}>0.00% (100% Cash Settlement)</Text>
+              <Text style={styles.summaryLabel}>Residual Market Risk</Text>
+              <Text style={styles.summaryValue}>0.00% (Cash Settlement)</Text>
             </View>
           </View>
 
@@ -59,7 +76,7 @@ export const UnwindModal: React.FC = () => {
             onPress={handleConfirmUnwind}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.textPrimary} />
             ) : (
               <Text style={styles.confirmButtonText}>Execute Immediate Unwind</Text>
             )}
@@ -81,50 +98,51 @@ export const UnwindModal: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(10, 13, 20, 0.85)",
+    backgroundColor: "rgba(8, 11, 17, 0.88)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
   },
   modalCard: {
-    backgroundColor: "#121620",
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: "#1E2638",
-    borderRadius: 24,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
     padding: 24,
     width: "100%",
+    maxWidth: 400,
     alignItems: "center",
   },
   alertIconBadge: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "rgba(255, 59, 48, 0.15)",
+    backgroundColor: colors.crimsonSoft,
     borderWidth: 1,
-    borderColor: "rgba(255, 59, 48, 0.4)",
+    borderColor: "rgba(255, 69, 58, 0.3)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
-  alertIcon: {
-    fontSize: 24,
-  },
   modalTitle: {
-    color: "#FFFFFF",
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: "800",
+    letterSpacing: -0.4,
     marginBottom: 8,
   },
   modalSubtitle: {
-    color: "#94A3B8",
-    fontSize: 13,
+    color: colors.textSecondary,
+    fontSize: 12.5,
     textAlign: "center",
     lineHeight: 18,
     marginBottom: 20,
   },
   summaryCard: {
-    backgroundColor: "#181E2C",
-    borderRadius: 16,
+    backgroundColor: colors.surfaceInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.lg,
     padding: 16,
     width: "100%",
     marginBottom: 20,
@@ -132,42 +150,45 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    paddingVertical: 4,
   },
   summaryLabel: {
-    color: "#94A3B8",
+    color: colors.textSecondary,
     fontSize: 12,
   },
   summaryValue: {
-    color: "#FFFFFF",
-    fontSize: 12,
+    color: colors.textPrimary,
+    fontSize: 12.5,
     fontWeight: "600",
   },
   summaryValuePositive: {
-    color: "#CCFF00",
-    fontSize: 12,
+    color: colors.lime,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   confirmButton: {
-    backgroundColor: "#FF3B30",
-    borderRadius: 14,
+    backgroundColor: colors.crimson,
+    borderRadius: radius.lg,
     paddingVertical: 14,
     width: "100%",
     alignItems: "center",
     marginBottom: 10,
+    shadowColor: colors.crimson,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
   confirmButtonText: {
-    color: "#FFFFFF",
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: "800",
   },
   cancelButton: {
     paddingVertical: 10,
-    width: "100%",
-    alignItems: "center",
   },
   cancelButtonText: {
-    color: "#94A3B8",
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },

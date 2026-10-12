@@ -6,13 +6,21 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { MeraAuthService } from "../auth/meraAuth";
 import { colors, radius, space } from "../theme";
+import {
+  ShieldCheck,
+  Zap,
+  Lock,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react-native";
 
 export const WelcomeScreen: React.FC = () => {
-  const { authenticate } = useAppStore();
+  const { authenticate, loadDemoTestingPreset } = useAppStore();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -24,7 +32,7 @@ export const WelcomeScreen: React.FC = () => {
       if (result.success && result.address) {
         authenticate(result.address);
       } else {
-        setAuthError("Biometric authentication was cancelled or failed.");
+        setAuthError("Biometric authentication was cancelled or unavailable.");
       }
     } catch (err: any) {
       setAuthError(err.message || "Failed to unlock biometric vault.");
@@ -42,21 +50,21 @@ export const WelcomeScreen: React.FC = () => {
           <Text style={styles.badgeText}>Monad Testnet · Chain 10143</Text>
         </View>
 
-        {/* Hero Branding & Illuminated Shield */}
+        {/* Hero Branding with Shield Glow */}
         <View style={styles.heroSection}>
           <View style={styles.shieldGlow}>
             <View style={styles.shieldInner}>
-              <Text style={styles.shieldIcon}>🛡️</Text>
+              <ShieldCheck size={42} color={colors.lime} strokeWidth={2.2} />
             </View>
           </View>
 
           <Text style={styles.brandTitle}>CounterYield</Text>
           <Text style={styles.brandTagline}>
-            Automated Delta-Neutral Dollar Yield
+            Delta-Neutral Basis Yield on Monad
           </Text>
           <Text style={styles.brandDescription}>
-            Institutional cash-and-carry funding arbitrage on Monad.
-            Zero wallet jargon, zero seed phrases, secured by biometric Passkeys.
+            Institutional cash-and-carry funding arbitrage packaged into a consumer mobile primitive.
+            Secured by WebAuthn Passkeys & hardware PRF session isolation.
           </Text>
         </View>
 
@@ -64,7 +72,7 @@ export const WelcomeScreen: React.FC = () => {
         <View style={styles.featureGrid}>
           <View style={styles.featureItem}>
             <View style={styles.featureIconBox}>
-              <Text style={styles.featureIcon}>⚡</Text>
+              <Zap size={18} color={colors.lime} strokeWidth={2.4} />
             </View>
             <View style={styles.featureTextBox}>
               <Text style={styles.featureTitle}>Delta-Neutral Carry</Text>
@@ -74,34 +82,34 @@ export const WelcomeScreen: React.FC = () => {
 
           <View style={styles.featureItem}>
             <View style={styles.featureIconBox}>
-              <Text style={styles.featureIcon}>🔒</Text>
+              <Lock size={18} color={colors.lime} strokeWidth={2.4} />
             </View>
             <View style={styles.featureTextBox}>
               <Text style={styles.featureTitle}>Hardware PRF Isolation</Text>
-              <Text style={styles.featureSub}>WebAuthn Secure Enclave & Face ID</Text>
+              <Text style={styles.featureSub}>Secure Enclave / TPM Face ID key derivation</Text>
             </View>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.featureIconBox}>
-              <Text style={styles.featureIcon}>🛡️</Text>
+              <Sparkles size={18} color={colors.lime} strokeWidth={2.4} />
             </View>
             <View style={styles.featureTextBox}>
               <Text style={styles.featureTitle}>3-Tier Risk Guard</Text>
-              <Text style={styles.featureSub}>Automated reserve buffer & 1-tap exit</Text>
+              <Text style={styles.featureSub}>Automated 10% reserve buffer & 1-tap exit</Text>
             </View>
           </View>
         </View>
 
-        {/* Auth Error Feedback */}
+        {/* Error Feedback */}
         {authError ? (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{authError}</Text>
           </View>
         ) : null}
 
-        {/* Biometric CTA Action */}
-        <View style={styles.footerSection}>
+        {/* Action Buttons */}
+        <View style={styles.buttonGroup}>
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.85}
@@ -109,19 +117,32 @@ export const WelcomeScreen: React.FC = () => {
             onPress={handleBiometricUnlock}
           >
             {isAuthenticating ? (
-              <ActivityIndicator color="#0A0D14" />
+              <ActivityIndicator color={colors.textDark} />
             ) : (
-              <View style={styles.buttonContent}>
-                <Text style={styles.passkeyIcon}>🪪</Text>
-                <Text style={styles.buttonText}>Unlock with Face ID / Passkey</Text>
-              </View>
+              <>
+                <Text style={styles.primaryButtonText}>
+                  Unlock with Face ID / Passkey
+                </Text>
+                <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
+              </>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.footerNotice}>
-            Secured by @category-labs/mera · Non-Custodial Vault
-          </Text>
+          {/* Quick Demo Preset for Hackathon / Testing */}
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            activeOpacity={0.7}
+            onPress={loadDemoTestingPreset}
+          >
+            <Text style={styles.secondaryButtonText}>
+              ⚡ Quick Testnet Preset (Judges Demo)
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        <Text style={styles.footerNote}>
+          Non-custodial. No seed phrases stored on servers. Powered by Mera.
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -130,136 +151,129 @@ export const WelcomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.canvas,
   },
   container: {
     flex: 1,
-    paddingHorizontal: space.xl,
-    paddingTop: space.xl,
-    paddingBottom: space.lg,
+    paddingHorizontal: 24,
     justifyContent: "space-between",
+    paddingVertical: Platform.OS === "android" ? 20 : 12,
   },
   badgeContainer: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "center",
-    backgroundColor: colors.surface,
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs + 2,
-    borderRadius: radius.pill,
+    backgroundColor: colors.limeMuted,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(204, 255, 0, 0.25)",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
   },
   networkDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.lime,
-    marginRight: space.xs + 2,
+    marginRight: 8,
   },
   badgeText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "600",
+    color: colors.lime,
+    fontSize: 11.5,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   heroSection: {
     alignItems: "center",
-    marginTop: space.lg,
+    marginTop: 10,
   },
   shieldGlow: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.limeSoft,
-    borderWidth: 2,
-    borderColor: colors.limeLine,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: colors.limeMuted,
+    borderWidth: 1,
+    borderColor: "rgba(204, 255, 0, 0.3)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: space.lg,
+    marginBottom: 20,
     shadowColor: colors.lime,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius: 16,
+    shadowRadius: 20,
+    elevation: 8,
   },
   shieldInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: colors.surface,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.borderCard,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.lime,
-  },
-  shieldIcon: {
-    fontSize: 32,
   },
   brandTitle: {
+    color: colors.textPrimary,
     fontSize: 32,
     fontWeight: "800",
-    color: colors.snow,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
+    marginBottom: 6,
   },
   brandTagline: {
-    fontSize: 16,
-    fontWeight: "700",
     color: colors.lime,
-    marginTop: space.xs,
+    fontSize: 14.5,
+    fontWeight: "700",
+    marginBottom: 10,
     textAlign: "center",
   },
   brandDescription: {
+    color: colors.textSecondary,
     fontSize: 13,
-    color: colors.muted,
-    textAlign: "center",
     lineHeight: 19,
-    marginTop: space.sm,
-    paddingHorizontal: space.md,
+    textAlign: "center",
+    paddingHorizontal: 12,
   },
   featureGrid: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.md,
-    gap: space.md,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
+    padding: 18,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
+    paddingVertical: 10,
   },
   featureIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceHi,
-    borderWidth: 1,
-    borderColor: colors.border,
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.limeMuted,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: space.md,
-  },
-  featureIcon: {
-    fontSize: 18,
+    marginRight: 14,
   },
   featureTextBox: {
     flex: 1,
   },
   featureTitle: {
-    fontSize: 14,
+    color: colors.textPrimary,
+    fontSize: 13.5,
     fontWeight: "700",
-    color: colors.snow,
+    marginBottom: 2,
   },
   featureSub: {
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 2,
+    color: colors.textSecondary,
+    fontSize: 11.5,
   },
   errorBanner: {
-    backgroundColor: "rgba(255, 59, 48, 0.15)",
+    backgroundColor: colors.crimsonSoft,
     borderWidth: 1,
-    borderColor: colors.crimson,
-    padding: space.sm,
-    borderRadius: radius.sm,
+    borderColor: "rgba(255, 69, 58, 0.3)",
+    borderRadius: radius.md,
+    padding: 12,
   },
   errorText: {
     color: colors.crimson,
@@ -267,39 +281,42 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
-  footerSection: {
-    alignItems: "center",
-    gap: space.sm,
+  buttonGroup: {
+    width: "100%",
   },
   primaryButton: {
-    width: "100%",
-    backgroundColor: colors.lime,
-    paddingVertical: space.md + 2,
-    borderRadius: radius.md,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.lime,
+    borderRadius: radius.lg,
+    paddingVertical: 16,
+    marginBottom: 10,
     shadowColor: colors.lime,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
+    elevation: 6,
   },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.xs + 2,
-  },
-  passkeyIcon: {
-    fontSize: 18,
-  },
-  buttonText: {
-    color: colors.bg,
-    fontSize: 15,
+  primaryButtonText: {
+    color: colors.textDark,
+    fontSize: 14.5,
     fontWeight: "800",
-    letterSpacing: 0.2,
+    marginRight: 8,
   },
-  footerNotice: {
-    color: colors.dim,
+  secondaryButton: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  secondaryButtonText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  footerNote: {
+    color: colors.textTertiary,
     fontSize: 11,
-    fontWeight: "500",
+    textAlign: "center",
+    marginBottom: 6,
   },
 });

@@ -8,9 +8,16 @@ import {
   SafeAreaView,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useKuruBook } from "../state/hooks/useKuruBook";
 import { colors, radius, space } from "../theme";
+import {
+  ArrowLeftRight,
+  TrendingUp,
+  Activity,
+  CheckCircle2,
+} from "lucide-react-native";
 
 export const SpotScreen: React.FC = () => {
   const { bids, asks, mid, spreadBps, isLoading } = useKuruBook();
@@ -42,21 +49,27 @@ export const SpotScreen: React.FC = () => {
           </View>
         </View>
         <Text style={styles.screenSubtitle}>
-          Direct onchain central limit order book execution
+          Direct onchain central limit order book execution on Monad Testnet.
         </Text>
 
         {/* Live Mid Price Banner */}
         <View style={styles.midPriceCard}>
-          <Text style={styles.midPriceLabel}>Live Mid-Price</Text>
+          <View style={styles.midPriceTop}>
+            <Text style={styles.midPriceLabel}>Live Mid-Price</Text>
+            <View style={styles.tightSpreadPill}>
+              <Text style={styles.tightSpreadText}>
+                Spread: {(spreadBps / 100).toFixed(2)}%
+              </Text>
+            </View>
+          </View>
           <Text style={styles.midPriceValue}>${mid.toFixed(3)} AUSD</Text>
-          <Text style={styles.spreadLabel}>Spread: {(spreadBps / 100).toFixed(2)}% (Tight Liquidity)</Text>
         </View>
 
         {/* Order Book Visualizer */}
         <View style={styles.bookCard}>
           <View style={styles.bookHeader}>
             <Text style={styles.colHeader}>Price (AUSD)</Text>
-            <Text style={styles.colHeader}>Size (MON)</Text>
+            <Text style={styles.colHeaderCenter}>Size (MON)</Text>
             <Text style={styles.colHeaderRight}>Total (AUSD)</Text>
           </View>
 
@@ -70,7 +83,9 @@ export const SpotScreen: React.FC = () => {
           ))}
 
           <View style={styles.spreadDivider}>
-            <Text style={styles.spreadDividerText}>───── Kuru CLOB Spread ─────</Text>
+            <View style={styles.spreadLine} />
+            <Text style={styles.spreadDividerText}>Kuru CLOB Spread</Text>
+            <View style={styles.spreadLine} />
           </View>
 
           {/* Bids (Green) */}
@@ -121,57 +136,50 @@ export const SpotScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.tradeInput}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="0.00"
-              placeholderTextColor="#475569"
-            />
-            <Text style={styles.inputCurrency}>MON</Text>
-          </View>
-
-          <View style={styles.calcRow}>
-            <Text style={styles.calcLabel}>Estimated Settlement</Text>
-            <Text style={styles.calcValue}>${estimatedCost} AUSD</Text>
-          </View>
-
-          <View style={styles.calcRow}>
-            <Text style={styles.calcLabel}>Venue Router</Text>
-            <Text style={styles.venueText}>Kuru Router (0x7EFbE1...4630)</Text>
-          </View>
-
-          {txStatus === "CONFIRMED" ? (
-            <View style={styles.successBanner}>
-              <Text style={styles.successText}>✓ Fill Confirmed on Monad Testnet</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Order Size</Text>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.textInput}
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+              />
+              <Text style={styles.inputUnit}>MON</Text>
             </View>
-          ) : null}
+          </View>
+
+          <View style={styles.estCostRow}>
+            <Text style={styles.estCostLabel}>Est. Total Outlay:</Text>
+            <Text style={styles.estCostValue}>${estimatedCost} AUSD</Text>
+          </View>
 
           <TouchableOpacity
             style={[
-              styles.executeButton,
-              tradeSide === "BUY" ? styles.executeBuy : styles.executeSell,
+              styles.execBtn,
+              tradeSide === "BUY" ? styles.execBtnBuy : styles.execBtnSell,
             ]}
             activeOpacity={0.85}
-            disabled={txStatus === "SUBMITTING"}
             onPress={handleExecuteTrade}
           >
             {txStatus === "SUBMITTING" ? (
-              <ActivityIndicator color={tradeSide === "BUY" ? "#0A0D14" : "#FFFFFF"} />
+              <ActivityIndicator color={colors.textDark} />
+            ) : txStatus === "CONFIRMED" ? (
+              <View style={styles.btnRow}>
+                <CheckCircle2 size={18} color={colors.textDark} />
+                <Text style={styles.execBtnText}>Order Mined on Monad</Text>
+              </View>
             ) : (
-              <Text
-                style={[
-                  styles.executeButtonText,
-                  tradeSide === "BUY" ? styles.textDark : styles.textLight,
-                ]}
-              >
-                {tradeSide === "BUY" ? "Place Market Buy" : "Place Market Sell"}
+              <Text style={styles.execBtnText}>
+                Place Market {tradeSide === "BUY" ? "Buy" : "Sell"}
               </Text>
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 110 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -180,154 +188,178 @@ export const SpotScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.canvas,
   },
   scrollContent: {
-    padding: space.xl,
-    paddingBottom: 90,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "android" ? 16 : 8,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 4,
   },
   screenTitle: {
-    color: colors.snow,
+    color: colors.textPrimary,
     fontSize: 26,
     fontWeight: "800",
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   pairBadge: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs + 2,
+    backgroundColor: colors.limeMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   pairBadgeText: {
     color: colors.lime,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
   },
   screenSubtitle: {
-    color: colors.muted,
+    color: colors.textSecondary,
     fontSize: 13,
-    marginTop: 4,
-    marginBottom: space.lg,
+    marginBottom: 18,
   },
   midPriceCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: space.md,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
+    padding: 18,
+    marginBottom: 16,
+  },
+  midPriceTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: space.md,
+    marginBottom: 6,
   },
   midPriceLabel: {
-    color: colors.muted,
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  tightSpreadPill: {
+    backgroundColor: colors.glassFillLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.xs,
+  },
+  tightSpreadText: {
+    color: colors.lime,
     fontSize: 11,
     fontWeight: "600",
-    textTransform: "uppercase",
   },
   midPriceValue: {
-    color: colors.snow,
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: "800",
-    marginVertical: 4,
-  },
-  spreadLabel: {
-    color: colors.lime,
-    fontSize: 12,
-    fontWeight: "600",
+    letterSpacing: -0.5,
   },
   bookCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: space.md,
-    marginBottom: space.lg,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
+    padding: 16,
+    marginBottom: 16,
   },
   bookHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 6,
+    borderBottomColor: colors.borderSubtle,
   },
   colHeader: {
-    color: colors.dim,
+    color: colors.textTertiary,
     fontSize: 11,
     fontWeight: "600",
     flex: 1,
   },
-  colHeaderRight: {
-    color: colors.dim,
+  colHeaderCenter: {
+    color: colors.textTertiary,
     fontSize: 11,
     fontWeight: "600",
-    textAlign: "right",
     flex: 1,
+    textAlign: "center",
+  },
+  colHeaderRight: {
+    color: colors.textTertiary,
+    fontSize: 11,
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "right",
   },
   bookRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 4,
+    paddingVertical: 5,
   },
   askPrice: {
     color: colors.crimson,
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: "700",
     flex: 1,
   },
   bidPrice: {
     color: colors.lime,
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: "700",
     flex: 1,
   },
   bookSize: {
-    color: colors.text,
-    fontSize: 12,
-    textAlign: "center",
+    color: colors.textPrimary,
+    fontSize: 12.5,
+    fontWeight: "500",
     flex: 1,
+    textAlign: "center",
   },
   bookTotal: {
-    color: colors.muted,
-    fontSize: 12,
-    textAlign: "right",
+    color: colors.textSecondary,
+    fontSize: 12.5,
+    fontWeight: "500",
     flex: 1,
+    textAlign: "right",
   },
   spreadDivider: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
+  },
+  spreadLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.borderSubtle,
   },
   spreadDividerText: {
-    color: colors.border,
+    color: colors.textTertiary,
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: "600",
+    marginHorizontal: 8,
   },
   tradeCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: space.lg,
+    borderColor: colors.borderCard,
+    borderRadius: radius.xl,
+    padding: 18,
   },
   tabToggleRow: {
     flexDirection: "row",
-    backgroundColor: colors.surfaceHi,
-    borderRadius: radius.sm,
-    padding: 4,
-    marginBottom: space.md,
+    backgroundColor: colors.surfaceInput,
+    borderRadius: radius.lg,
+    padding: 3,
+    marginBottom: 16,
   },
   tabToggle: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: "center",
-    borderRadius: radius.sm - 2,
+    borderRadius: radius.md,
   },
   tabToggleActiveBuy: {
     backgroundColor: colors.lime,
@@ -336,97 +368,78 @@ const styles = StyleSheet.create({
     backgroundColor: colors.crimson,
   },
   tabToggleText: {
-    color: colors.muted,
-    fontSize: 13,
+    color: colors.textSecondary,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   tabToggleTextActive: {
-    color: colors.bg,
-    fontWeight: "800",
+    color: colors.textDark,
+  },
+  inputContainer: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    color: colors.textSecondary,
+    fontSize: 11.5,
+    fontWeight: "500",
+    marginBottom: 6,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surfaceHi,
+    justifyContent: "space-between",
+    backgroundColor: colors.surfaceInput,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: space.md,
-    marginBottom: space.md,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  tradeInput: {
+  textInput: {
     flex: 1,
-    color: colors.snow,
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: "700",
-    paddingVertical: 12,
+    padding: 0,
   },
-  inputCurrency: {
-    color: colors.muted,
-    fontSize: 14,
-    fontWeight: "700",
+  inputUnit: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
   },
-  calcRow: {
+  estCostRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: space.xs + 2,
+    marginBottom: 16,
   },
-  calcLabel: {
-    color: colors.muted,
+  estCostLabel: {
+    color: colors.textSecondary,
     fontSize: 12,
   },
-  calcValue: {
-    color: colors.snow,
+  estCostValue: {
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
-  venueText: {
-    color: colors.dim,
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  successBanner: {
-    backgroundColor: colors.limeSoft,
-    borderWidth: 1,
-    borderColor: colors.limeLine,
-    padding: space.sm,
-    borderRadius: radius.sm,
-    marginTop: space.sm,
-  },
-  successText: {
-    color: colors.lime,
-    fontSize: 12,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  executeButton: {
-    borderRadius: radius.sm,
+  execBtn: {
     paddingVertical: 14,
+    borderRadius: radius.lg,
     alignItems: "center",
-    marginTop: space.md,
+    justifyContent: "center",
   },
-  executeBuy: {
+  execBtnBuy: {
     backgroundColor: colors.lime,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
   },
-  executeSell: {
+  execBtnSell: {
     backgroundColor: colors.crimson,
-    shadowColor: colors.crimson,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
   },
-  executeButtonText: {
+  execBtnText: {
+    color: colors.textDark,
     fontSize: 14,
     fontWeight: "800",
   },
-  textDark: {
-    color: colors.bg,
-  },
-  textLight: {
-    color: colors.snow,
+  btnRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });

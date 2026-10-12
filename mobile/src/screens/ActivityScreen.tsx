@@ -8,10 +8,19 @@ import {
   TouchableOpacity,
   Linking,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useActivity } from "../state/hooks/useActivity";
 import { colors, radius, space } from "../theme";
 import { config } from "../config/env";
+import {
+  Clock,
+  ExternalLink,
+  Shield,
+  Zap,
+  RotateCcw,
+  RefreshCw,
+} from "lucide-react-native";
 
 export const ActivityScreen: React.FC = () => {
   const { activities, isLoading, refetch } = useActivity();
@@ -28,75 +37,81 @@ export const ActivityScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <Text style={styles.screenTitle}>Onchain Activity Log</Text>
+          <Text style={styles.screenTitle}>Onchain Activity</Text>
           <TouchableOpacity
             style={styles.refreshButton}
             onPress={refetch}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.lime} />
             ) : (
-              <Text style={styles.refreshText}>↻ Sync</Text>
+              <View style={styles.refreshRow}>
+                <RefreshCw size={13} color={colors.lime} />
+                <Text style={styles.refreshText}>Sync</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
 
         <Text style={styles.screenSubtitle}>
-          Real-time Envio HyperIndex GraphQL audit stream on Monad Testnet
+          Envio HyperIndex real-time GraphQL audit log on Monad Testnet.
         </Text>
 
-        {activities.map((act) => (
-          <TouchableOpacity
-            key={act.id}
-            style={styles.activityCard}
-            activeOpacity={0.8}
-            onPress={() => handleOpenExplorer(act.txHash)}
-          >
-            <View style={styles.activityHeader}>
-              <View
-                style={[
-                  styles.activityTypePill,
-                  act.type === "GUARD_EVENT"
-                    ? styles.pillAmber
-                    : act.type === "OPEN_HEDGE"
-                    ? styles.pillLime
-                    : styles.pillDefault,
-                ]}
-              >
-                <Text
+        {activities.map((act) => {
+          const isGuard = act.type === "GUARD_EVENT";
+          const isHedge = act.type === "OPEN_HEDGE";
+
+          return (
+            <TouchableOpacity
+              key={act.id}
+              style={styles.activityCard}
+              activeOpacity={0.8}
+              onPress={() => handleOpenExplorer(act.txHash)}
+            >
+              <View style={styles.activityHeader}>
+                <View
                   style={[
-                    styles.activityTypeText,
-                    act.type === "OPEN_HEDGE" ? styles.textDark : styles.textLight,
+                    styles.typePill,
+                    isGuard ? styles.pillAmber : isHedge ? styles.pillLime : styles.pillDefault,
                   ]}
                 >
-                  {act.type}
-                </Text>
+                  <Text
+                    style={[
+                      styles.typeText,
+                      isHedge ? styles.typeTextDark : styles.typeTextLight,
+                    ]}
+                  >
+                    {act.type}
+                  </Text>
+                </View>
+                <Text style={styles.timestampText}>{act.timestamp}</Text>
               </View>
-              <Text style={styles.timestampText}>{act.timestamp}</Text>
-            </View>
 
-            <Text style={styles.activityTitle}>{act.title}</Text>
+              <Text style={styles.activityTitle}>{act.title}</Text>
 
-            <View style={styles.activityFooter}>
-              <Text
-                style={[
-                  styles.amountText,
-                  act.isPositive ? styles.amountPositive : styles.amountNeutral,
-                ]}
-              >
-                {act.amount}
-              </Text>
-
-              <View style={styles.txHashRow}>
-                <Text style={styles.txHashText}>
-                  Tx: {act.txHash.slice(0, 8)}...{act.txHash.slice(-6)}
+              <View style={styles.activityFooter}>
+                <Text
+                  style={[
+                    styles.amountText,
+                    act.isPositive ? styles.amountPositive : styles.amountNeutral,
+                  ]}
+                >
+                  {act.amount}
                 </Text>
-                <Text style={styles.arrowIcon}>↗</Text>
+
+                <View style={styles.txHashRow}>
+                  <Text style={styles.txHashText}>
+                    {act.txHash.slice(0, 6)}...{act.txHash.slice(-4)}
+                  </Text>
+                  <ExternalLink size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
+
+        <View style={{ height: 110 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -105,102 +120,102 @@ export const ActivityScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.canvas,
   },
   scrollContent: {
-    padding: space.xl,
-    paddingBottom: 90,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "android" ? 16 : 8,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 4,
   },
   screenTitle: {
-    color: colors.snow,
+    color: colors.textPrimary,
     fontSize: 26,
     fontWeight: "800",
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   refreshButton: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs + 2,
-    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderCard,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  refreshRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   refreshText: {
     color: colors.lime,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
+    marginLeft: 6,
   },
   screenSubtitle: {
-    color: colors.muted,
+    color: colors.textSecondary,
     fontSize: 13,
-    marginTop: 4,
-    marginBottom: space.lg,
+    marginBottom: 18,
   },
   activityCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: space.md,
-    marginBottom: space.md,
+    borderColor: colors.borderCard,
+    borderRadius: radius.lg,
+    padding: 16,
+    marginBottom: 12,
   },
   activityHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  activityTypePill: {
+  typePill: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
   },
   pillLime: {
     backgroundColor: colors.lime,
   },
   pillAmber: {
-    backgroundColor: "rgba(255, 176, 32, 0.2)",
-    borderWidth: 1,
-    borderColor: colors.amber,
+    backgroundColor: colors.amberSoft,
   },
   pillDefault: {
-    backgroundColor: colors.surfaceHi,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.glassFillLight,
   },
-  activityTypeText: {
-    fontSize: 10,
-    fontWeight: "800",
+  typeText: {
+    fontSize: 10.5,
+    fontWeight: "700",
   },
-  textDark: {
-    color: colors.bg,
+  typeTextDark: {
+    color: colors.textDark,
   },
-  textLight: {
-    color: colors.snow,
+  typeTextLight: {
+    color: colors.textPrimary,
   },
   timestampText: {
-    color: colors.dim,
+    color: colors.textTertiary,
     fontSize: 11,
-    fontWeight: "500",
   },
   activityTitle: {
-    color: colors.snow,
-    fontSize: 14,
-    fontWeight: "700",
+    color: colors.textPrimary,
+    fontSize: 13.5,
+    fontWeight: "600",
     marginBottom: 12,
   },
   activityFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
+    borderTopColor: colors.borderSubtle,
   },
   amountText: {
     fontSize: 13,
@@ -210,21 +225,14 @@ const styles = StyleSheet.create({
     color: colors.lime,
   },
   amountNeutral: {
-    color: colors.muted,
+    color: colors.textPrimary,
   },
   txHashRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
   },
   txHashText: {
-    color: colors.dim,
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  arrowIcon: {
-    color: colors.lime,
-    fontSize: 12,
-    fontWeight: "700",
+    color: colors.textSecondary,
+    fontSize: 11.5,
   },
 });
