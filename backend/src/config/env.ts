@@ -20,6 +20,8 @@ const envSchema = z.object({
   KURU_ROUTER_ADDRESS: z.string().default('0x7EFbE105Ca7415dE98F96622173458ac1c054630'),
   KURU_MARKET_MON_USDC: z.string().default('0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9'),
   CARRY_LEDGER_ADDRESS: z.string().default('0x0000000000000000000000000000000000000000'),
+  // Kuru L2 data source (no default on purpose: depth is never invented). Verify the endpoint on day one.
+  KURU_API_URL: z.string().url().optional(),
 
   // Perpl
   PERPL_API_URL: z.string().url().default('https://testnet.perpl.xyz/api'),

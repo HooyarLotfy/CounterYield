@@ -6,6 +6,8 @@ import { perplClient } from '../clients/perplClient.js';
 import { kuruClient } from '../clients/kuruClient.js';
 import { RISK_GUARD_CONSTANTS, PERPL_TESTNET_MARKETS } from '../config/constants.js';
 import { PositionModel } from '@counter-yield/shared';
+import { spotExecutors } from './spotExecutor.js';
+import { ServiceUnavailableError } from '../utils/errors.js';
 
 export interface ExecuteEntryParams {
   ownerAddress: `0x${string}`;
@@ -34,10 +36,11 @@ export class StrategyEngine {
 
     logger.info({ ownerAddress, marketId, depositAmount, leverage }, 'Starting dual-leg entry sequence');
 
-    // 1. Pre-Trade Validation
+    // 1. Pre-Trade Validation (fail closed: no invented prices, depth or executor)
     const perplMarketId = PERPL_TESTNET_MARKETS.MON; // Market ID 64 on testnet
-    const ticker = await perplClient.getTicker(perplMarketId).catch(() => ({ mrk: 10.0, fr: 25 }));
-    const markPrice = ticker.mrk || 10.0;
+    const spotExecutor = spotExecutors.require(); // reject BEFORE any Perpl order so no short is left behind
+    const ticker = await perplClient.getValidatedTicker(perplMarketId);
+    const markPrice = ticker.mrk;
 
     const depthCheck = await kuruClient.validateLiquidityDepth(depositAmount);
     if (!depthCheck.eligible) {
@@ -59,8 +62,8 @@ export class StrategyEngine {
     let perplOrderSuccess = false;
 
     try {
-      if (perplApiKey === 'testnet-demo-key' || env.NODE_ENV === 'test') {
-        logger.info('Running in sandbox/test mode: Simulating Perpl IOC short order acceptance');
+      if (env.NODE_ENV === 'test') {
+        logger.info('NODE_ENV=test: Perpl IOC short acceptance is simulated');
         perplOrderSuccess = true;
       } else {
         const perplRes = await perplClient.openIocShort(
@@ -88,13 +91,10 @@ export class StrategyEngine {
     let spotTxHash: string | null = null;
 
     try {
-      // Execute spot buy within a 3-second timeout promise race
-      const spotExecutionPromise = new Promise<string>((resolve) => {
-        // In live integration: submit via publicClient.sendTransaction or dry-run receipt
-        setTimeout(() => {
-          resolve(`0x${Math.random().toString(16).substring(2).padEnd(64, '0')}`);
-        }, 300); // Fast sub-second response on Monad
-      });
+      // Real spot buy via the registered executor, raced against the 3-second leg timeout.
+      const spotExecutionPromise = spotExecutor
+        .buy({ quoteAmountAusd: sizing.spotCapital, baseQty: sizing.baseQuantity, maxSlippageBps })
+        .then((fill) => fill.txHash);
 
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {

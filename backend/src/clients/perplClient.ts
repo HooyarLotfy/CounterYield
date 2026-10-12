@@ -11,6 +11,7 @@ import {
   PerplBatchResponse,
   PerplTicker,
 } from '../types/perpl.js';
+import { ServiceUnavailableError } from '../utils/errors.js';
 
 export class PerplClient {
   private apiUrl: string;
@@ -69,10 +70,34 @@ export class PerplClient {
     return response.data;
   }
 
+  /** Test-only injection so unit tests never depend on live network state. */
+  private tickerOverride: ((marketId: number) => Promise<PerplTicker>) | null = null;
+  setTickerSourceForTests(fn: ((marketId: number) => Promise<PerplTicker>) | null): void {
+    this.tickerOverride = fn;
+  }
+
+  /**
+   * Ticker with strict validation: a missing, non-finite or non-positive mark price
+   * raises a 503 instead of being replaced by a made-up value.
+   */
+  async getValidatedTicker(marketId: number): Promise<PerplTicker> {
+    let ticker: PerplTicker;
+    try {
+      ticker = await this.getTicker(marketId);
+    } catch (err) {
+      throw new ServiceUnavailableError('PRICE_UNAVAILABLE', `Perpl mark price unavailable for market ${marketId}`);
+    }
+    if (!Number.isFinite(ticker?.mrk) || ticker.mrk <= 0 || !Number.isFinite(ticker?.fr)) {
+      throw new ServiceUnavailableError('PRICE_INVALID', `Perpl returned an invalid ticker for market ${marketId}`);
+    }
+    return ticker;
+  }
+
   /**
    * Fetches the current ticker and mark price for a given market ID (e.g. 64 for MON).
    */
   async getTicker(marketId: number): Promise<PerplTicker> {
+    if (this.tickerOverride) return this.tickerOverride(marketId);
     try {
       const res = await axios.get(`${this.apiUrl}/v1/market-data/${marketId}/ticker`, {
         timeout: 5000,

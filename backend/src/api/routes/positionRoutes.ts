@@ -25,14 +25,15 @@ export async function positionRoutes(fastify: FastifyInstance) {
       };
     }
 
-    // Refresh live telemetry
-    const ticker = await perplClient.getTicker(position.perplMarketId || PERPL_TESTNET_MARKETS.MON).catch(() => ({ mrk: 10.0 }));
-    const markPrice = ticker.mrk || 10.0;
+    // Refresh live telemetry (throws 503 if the price feed is missing/invalid; never invents a price)
+    const ticker = await perplClient.getValidatedTicker(position.perplMarketId || PERPL_TESTNET_MARKETS.MON);
+    const markPrice = ticker.mrk;
     const riskStatus = riskGuard.evaluatePositionRisk(position, markPrice, markPrice);
 
-    // Compute live estimated funding accrual
+    // ESTIMATED accrual = live hourly funding rate x notional x elapsed hours (same micros convention as /market/quote).
+    // Realized funding is reconciled separately (settledFundingUsd) and is never mixed with this estimate.
     const elapsedHours = (Date.now() - position.openedAt) / (1000 * 60 * 60);
-    const hourlyRate = 0.00015; // ~15 bps per hour
+    const hourlyRate = ticker.fr / 1_000_000;
     const notional = parseFloat(position.spotLeg.currentValueUsd);
     const estimatedFunding = (notional * hourlyRate * elapsedHours).toFixed(2);
     position.estimatedAccrualUsd = estimatedFunding;

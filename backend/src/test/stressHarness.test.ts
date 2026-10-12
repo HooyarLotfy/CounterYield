@@ -1,3 +1,4 @@
+import './setupEnv.js';
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { stressHarness } from '../guard/stressHarness.js';

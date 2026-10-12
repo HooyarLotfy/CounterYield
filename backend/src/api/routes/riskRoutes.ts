@@ -18,8 +18,8 @@ export async function riskRoutes(fastify: FastifyInstance) {
       };
     }
 
-    const ticker = await perplClient.getTicker(position.perplMarketId || PERPL_TESTNET_MARKETS.MON).catch(() => ({ mrk: 10.0, fr: 25 }));
-    const markPrice = ticker.mrk || 10.0;
+    const ticker = await perplClient.getValidatedTicker(position.perplMarketId || PERPL_TESTNET_MARKETS.MON);
+    const markPrice = ticker.mrk;
     const riskStatus = riskGuard.evaluatePositionRisk(position, markPrice, markPrice);
 
     const circuitBreaker = CircuitBreakers.evaluate(Date.now(), 0.15, 1.0);

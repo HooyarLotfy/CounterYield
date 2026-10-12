@@ -2,6 +2,7 @@ import { logger } from '../utils/logger.js';
 import { perplClient } from '../clients/perplClient.js';
 import { kuruClient } from '../clients/kuruClient.js';
 import { PositionModel } from '@counter-yield/shared';
+import { spotExecutors } from './spotExecutor.js';
 
 export interface UnwindResult {
   positionId: string;
@@ -29,7 +30,10 @@ export class UnwindEngine {
     const baseQty = parseFloat(position.baseQuantity);
     const accountId = 1;
 
-    // 1. Close Perpl short (reduce-only)
+    // Pre-check: without a spot executor we cannot honestly report UNWOUND, so touch nothing.
+    const spotExecutor = spotExecutors.require();
+
+    // 1. Close Perpl short (reduce-only) FIRST: never leave a naked short in a rising market.
     try {
       if (process.env.NODE_ENV === 'test') {
         logger.info({ positionId: position.positionId }, '[TEST MODE] Simulating Perpl short flatten');
@@ -45,14 +49,16 @@ export class UnwindEngine {
       logger.info({ positionId: position.positionId }, 'Perpl short leg closed successfully');
     } catch (err) {
       logger.error({ err, positionId: position.positionId }, 'Failed to close Perpl short during unwind');
+      throw new Error('Unwind aborted: Perpl short could not be closed; spot leg left untouched');
     }
 
-    // 2. Sell Kuru Spot Leg onchain
+    // 2. Sell Kuru spot leg through the user-signed executor (slippage widened for a force unwind)
     try {
-      // In live integration: submit encoded placeAndExecuteMarketSell
-      logger.info({ positionId: position.positionId }, 'Kuru spot leg liquidated');
+      const fill = await spotExecutor.sell({ baseQty, maxSlippageBps: 300 });
+      logger.info({ positionId: position.positionId, txHash: fill.txHash }, 'Kuru spot leg liquidated');
     } catch (err) {
       logger.error({ err, positionId: position.positionId }, 'Failed to liquidate Kuru spot leg');
+      throw new Error('Unwind incomplete: Perpl short closed but Kuru spot sale failed; retry unwind');
     }
 
     // 3. Compute final settlement

@@ -17,14 +17,15 @@ export async function marketRoutes(fastify: FastifyInstance) {
     const query = quoteQuerySchema.parse(request.query);
     const perplMarketId = PERPL_TESTNET_MARKETS.MON;
 
-    // Fetch live market data
-    const ticker = await perplClient.getTicker(perplMarketId).catch(() => ({ mrk: 10.0, fr: 25 }));
-    const markPrice = ticker.mrk || 10.0;
-    const fundingRateMicros = ticker.fr || 25; // in micros
+    // Fetch live market data (throws 503 rather than inventing a price)
+    const ticker = await perplClient.getValidatedTicker(perplMarketId);
+    const markPrice = ticker.mrk;
+    const fundingRateMicros = ticker.fr;
     const annualizedFundingApr = (fundingRateMicros * 24 * 365) / 1000000; // estimated APR
 
-    // Validate liquidity
+    // Validate liquidity + read real Kuru mid from the live book
     const depth = await kuruClient.validateLiquidityDepth(query.amount);
+    const kuruMid = await kuruClient.getMidPrice();
 
     // Calculate sizing
     const sizing = OrderSizer.calculateSizing(query.amount, markPrice, query.leverage);
@@ -58,7 +59,7 @@ export async function marketRoutes(fastify: FastifyInstance) {
         },
         telemetry: {
           perplMarkPrice: markPrice.toFixed(2),
-          kuruMidPrice: markPrice.toFixed(2),
+          kuruMidPrice: kuruMid.toFixed(2),
           trailingFundingApr: breakEven.grossAnnualApr,
           netEstimatedApr: breakEven.netAnnualApr,
           roundTripFeePercent: breakEven.roundTripFeePercent,
@@ -70,6 +71,25 @@ export async function marketRoutes(fastify: FastifyInstance) {
           tier3EmergencyPrice: tier3EmergencyPrice.toFixed(2),
           exchangeLiquidationPrice: exchangeLiquidationPrice.toFixed(2),
         },
+      },
+      timestamp: Date.now(),
+    };
+  });
+
+  // Live Kuru L2 book for the Spot tab (503 when the data source is not configured/available)
+  fastify.get('/api/v1/market/book', async () => {
+    const book = await kuruClient.getOrderBook();
+    const depth = 10;
+    const bestBid = book.bids[0].price;
+    const bestAsk = book.asks[0].price;
+    return {
+      success: true,
+      data: {
+        bids: book.bids.slice(0, depth),
+        asks: book.asks.slice(0, depth),
+        mid: (bestBid + bestAsk) / 2,
+        spreadBps: ((bestAsk - bestBid) / ((bestBid + bestAsk) / 2)) * 10000,
+        fetchedAt: book.fetchedAt,
       },
       timestamp: Date.now(),
     };

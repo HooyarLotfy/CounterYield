@@ -1,7 +1,6 @@
+import './setupEnv.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
-process.env.NODE_ENV = 'test';
 
 import { OrderSizer } from '../engine/orderSizer.js';
 import { BreakEvenCalculator } from '../engine/breakEvenCalc.js';
@@ -10,6 +9,24 @@ import { CircuitBreakers } from '../guard/circuitBreakers.js';
 import { checkMonadHealth } from '../clients/monadClient.js';
 import { createServer } from '../api/server.js';
 import { PositionModel } from '@counter-yield/shared';
+import { perplClient } from '../clients/perplClient.js';
+import { kuruClient } from '../clients/kuruClient.js';
+import { spotExecutors } from '../engine/spotExecutor.js';
+
+// Explicit, visible fixtures (the production code has no hidden mock data).
+const FIXTURE_MARK = 2560;
+const TEST_API_KEY = 'unit-test-key';
+const TEST_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+perplClient.setTickerSourceForTests(async () => ({ mrk: FIXTURE_MARK, idx: FIXTURE_MARK, dva: 1e6, fr: 150 }));
+kuruClient.setBookSourceForTests(async () => ({
+  bids: [{ price: 2559, size: 500 }],
+  asks: [{ price: 2561, size: 500 }],
+  fetchedAt: Date.now(),
+}));
+spotExecutors.register({
+  buy: async ({ baseQty }) => ({ txHash: '0x' + 'ab'.repeat(32), filledBaseQty: baseQty }),
+  sell: async ({ baseQty }) => ({ txHash: '0x' + 'cd'.repeat(32), filledBaseQty: baseQty }),
+});
 
 test('Monad Testnet RPC Connectivity Handshake', async () => {
   const health = await checkMonadHealth();
@@ -132,7 +149,7 @@ test('Fastify HTTP Endpoints (/health, /market/quote, /strategy/enter, /strategy
       depositAmount: 1000,
       leverage: 1,
       maxSlippageBps: 50,
-      apiKey: 'testnet-demo-key',
+      apiKey: TEST_API_KEY,
       apiSecretHex: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     },
   });
@@ -158,7 +175,7 @@ test('Fastify HTTP Endpoints (/health, /market/quote, /strategy/enter, /strategy
     payload: {
       positionId,
       reason: 'USER_REQUESTED',
-      apiKey: 'testnet-demo-key',
+      apiKey: TEST_API_KEY,
       apiSecretHex: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     },
   });
@@ -167,5 +184,58 @@ test('Fastify HTTP Endpoints (/health, /market/quote, /strategy/enter, /strategy
   assert.equal(unwindJson.success, true);
   assert.equal(unwindJson.data.status, 'UNWOUND');
 
+  await server.close();
+});
+
+test('Fail closed: invalid price feed returns 503 and never a fabricated price', async () => {
+  const server = await createServer();
+  perplClient.setTickerSourceForTests(async () => ({ mrk: 0, idx: 0, dva: 0, fr: NaN }));
+  const res = await server.inject({ method: 'GET', url: '/api/v1/market/quote?amount=1000&leverage=1' });
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.json().success, false);
+  perplClient.setTickerSourceForTests(async () => ({ mrk: FIXTURE_MARK, idx: FIXTURE_MARK, dva: 1e6, fr: 150 }));
+  await server.close();
+});
+
+test('Fail closed: no spot executor means entry is rejected before any order is placed', async () => {
+  const server = await createServer();
+  spotExecutors.register(null);
+  const res = await server.inject({
+    method: 'POST',
+    url: '/api/v1/strategy/enter',
+    payload: {
+      ownerAddress: '0x1234567890123456789012345678901234567890',
+      depositAmount: 1000,
+      apiKey: TEST_API_KEY,
+      apiSecretHex: TEST_SECRET,
+    },
+  });
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.json().error.code, 'SPOT_EXECUTOR_NOT_CONFIGURED');
+  spotExecutors.register({
+    buy: async ({ baseQty }) => ({ txHash: '0x' + 'ab'.repeat(32), filledBaseQty: baseQty }),
+    sell: async ({ baseQty }) => ({ txHash: '0x' + 'cd'.repeat(32), filledBaseQty: baseQty }),
+  });
+  await server.close();
+});
+
+test('Fail closed: thin Kuru depth rejects entry', async () => {
+  const server = await createServer();
+  kuruClient.setBookSourceForTests(async () => ({
+    bids: [{ price: 2559, size: 0.1 }],
+    asks: [{ price: 2561, size: 0.1 }],
+    fetchedAt: Date.now(),
+  }));
+  const res = await server.inject({
+    method: 'GET',
+    url: '/api/v1/market/quote?amount=1000&leverage=1',
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().data.eligible, false);
+  kuruClient.setBookSourceForTests(async () => ({
+    bids: [{ price: 2559, size: 500 }],
+    asks: [{ price: 2561, size: 500 }],
+    fetchedAt: Date.now(),
+  }));
   await server.close();
 });

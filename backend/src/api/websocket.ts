@@ -32,9 +32,18 @@ export async function websocketGateway(fastify: FastifyInstance) {
 
       if (activePositionId && activePositions.has(activePositionId)) {
         const position = activePositions.get(activePositionId)!;
-        const ticker = await perplClient.getTicker(position.perplMarketId || PERPL_TESTNET_MARKETS.MON).catch(() => ({ mrk: 10.0 }));
-        const markPrice = ticker.mrk || 10.0;
+        let ticker;
+        try {
+          ticker = await perplClient.getValidatedTicker(position.perplMarketId || PERPL_TESTNET_MARKETS.MON);
+        } catch {
+          socket.send(JSON.stringify({ type: 'FEED_STALE', positionId: position.positionId, timestamp: Date.now() }));
+          return;
+        }
+        const markPrice = ticker.mrk;
         const risk = riskGuard.evaluatePositionRisk(position, markPrice, markPrice);
+
+        const elapsedHours = (Date.now() - position.openedAt) / 3_600_000;
+        const accruedEst = (parseFloat(position.spotLeg.currentValueUsd) * (ticker.fr / 1_000_000) * elapsedHours).toFixed(2);
 
         const payload = {
           type: 'TELEMETRY_UPDATE',
@@ -46,7 +55,7 @@ export async function websocketGateway(fastify: FastifyInstance) {
           netDelta: risk.netDeltaDollars,
           isDeltaNeutral: risk.isDeltaNeutral,
           distanceToLiquidationPercent: risk.distanceToLiquidationPercent,
-          accruedFundingEst: position.estimatedAccrualUsd,
+          accruedFundingEst: accruedEst,
           timestamp: Date.now(),
         };
 

@@ -5,6 +5,7 @@ import { strategyEngine } from '../../engine/strategyEngine.js';
 import { unwindEngine } from '../../engine/unwindEngine.js';
 import { marketEligibilityEngine } from '../../engine/marketEligibility.js';
 import { db } from '../../db/database.js';
+import { spotExecutors } from '../../engine/spotExecutor.js';
 
 const enterSchema = z.object({
   ownerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
@@ -12,15 +13,15 @@ const enterSchema = z.object({
   depositAmount: z.number().positive(),
   leverage: z.number().min(1).max(2).default(1),
   maxSlippageBps: z.number().default(50),
-  apiKey: z.string().default('testnet-demo-key'),
-  apiSecretHex: z.string().default('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'),
+  apiKey: z.string().min(1),
+  apiSecretHex: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/),
 });
 
 const unwindSchema = z.object({
   positionId: z.string(),
   reason: z.string().default('USER_REQUESTED'),
-  apiKey: z.string().default('testnet-demo-key'),
-  apiSecretHex: z.string().default('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'),
+  apiKey: z.string().min(1),
+  apiSecretHex: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/),
 });
 
 const rebalanceSchema = z.object({
@@ -103,29 +104,26 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         throw new Error(`Position ${body.positionId} is not active (state: ${position.state})`);
       }
 
-      // Record manual rebalance audit trail
-      const oldSpot = position.spotLeg.quantity;
-      const oldPerp = position.perpLeg.quantity;
-      
-      const record = db.recordRebalance({
-        positionId: position.positionId,
-        oldSpotQty: oldSpot,
-        newSpotQty: oldSpot,
-        oldPerpQty: oldPerp,
-        newPerpQty: oldPerp,
-        reason: body.reason,
-        timestamp: Date.now(),
-      });
+      // Hedge drift = |spot - perp| / perp (spec 6.3: rebalance the smaller leg above 1%).
+      const oldSpot = parseFloat(position.spotLeg.quantity);
+      const oldPerp = parseFloat(position.perpLeg.quantity);
+      const driftRatio = oldPerp > 0 ? Math.abs(oldSpot - oldPerp) / oldPerp : 0;
 
-      return {
-        success: true,
-        data: {
-          positionId: position.positionId,
-          status: 'REBALANCED',
-          auditRecord: record,
-        },
-        timestamp: Date.now(),
-      };
+      if (driftRatio <= 0.01) {
+        return {
+          success: true,
+          data: {
+            positionId: position.positionId,
+            status: 'NO_ACTION_NEEDED',
+            driftBps: Math.round(driftRatio * 10000),
+          },
+          timestamp: Date.now(),
+        };
+      }
+
+      // Drift correction trades the smaller leg and needs the user-signed spot executor.
+      spotExecutors.require();
+      throw new Error('Drift rebalance execution is not implemented for the backend path; use the in-app engine');
     }
   );
 
