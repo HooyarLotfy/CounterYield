@@ -1,48 +1,49 @@
 # Update 2: Automated 3-Tier Risk Guard and Deployed On-Chain CarryLedger
 
-## Overview
+## What this update does
 
-CounterYield protects user short positions against liquidation during rapid market rallies and logs verifiable proof of hedge on-chain without taking custody of user funds.
+This update adds an automatic safety system that protects your money if the price of MON goes up too fast, and deploys a public audit contract on Monad.
 
 ## The Problem
 
-The primary failure mode in basis trading is short-leg liquidation:
-- When the underlying asset rallies fast, the short leg's margin ratio degrades while spot holdings appreciate equally in dollar terms.
-- If an exchange liquidates the short, the hedge breaks, penalties hit, and the user is left holding naked spot risk.
+When you buy spot MON and short MON at the same time:
+- If MON drops, your short position gains value while your spot position loses value. They cancel out.
+- But if MON rises fast, your spot position gains value, while your short position loses money and needs more cash collateral to stay open.
+- If you run out of cash collateral, the exchange will forcefully close your short position (liquidation), take penalty fees, and leave you stuck holding spot MON with no protection.
 
-## Technical Implementation
+## How the Risk Guard solves this
 
-We designed an autonomous Risk Guard daemon that monitors position margin ratios on every Monad block with a 3-tier defense ladder:
+The app has an automatic Risk Guard that watches your account on every single Monad block. If the price moves against your short position, it follows three clear safety rules:
 
-1. **Tier 1: Top-Up (Margin Ratio between 40% and 60%)**:
-   - Automatically draws unencumbered cash from the user's dedicated 10% AUSD reserve buffer to deposit into Perpl margin.
-   - Restores the margin ratio without selling any spot assets.
+1. **Tier 1 (Top-Up)**:
+   - When your margin level drops between 40% and 60%, the app automatically takes cash from your 10% safety reserve and adds it to your short position.
+   - Your positions stay 100% open, and nothing needs to be sold.
 
-2. **Tier 2: Forced Deleverage (Margin Ratio between 25% and 40%)**:
-   - If the reserve buffer is depleted, triggers a 20% proportional trim.
-   - Sells 20% of spot MON on Kuru and closes 20% of the Perpl short, bringing the margin ratio back above 100%.
+2. **Tier 2 (Trim Both Sides)**:
+   - If your 10% reserve is already empty and your margin drops between 25% and 40%, the app sells 20% of your spot MON and closes 20% of your short position.
+   - This frees up money and moves your margin safety level back above 100%.
 
-3. **Tier 3: Emergency Unwind (Margin Ratio below 25% across 2 consecutive blocks)**:
-   - Closes the Perpl short with a reduce-only market order and liquidates remaining spot on Kuru.
-   - Converts 100% of capital back into AUSD before exchange liquidators can intervene.
+3. **Tier 3 (Emergency Exit)**:
+   - If your margin drops below 25% for 2 blocks in a row, the app closes both positions immediately and turns all your funds into 100% AUSD cash.
+   - This guarantees that an exchange liquidation can never happen to your account, and your principal is protected.
 
-## On-Chain Verification
+## Public audit contract on Monad (CarryLedger)
 
-- **Deployed Contract**: `CarryLedger.sol` deployed on Monad Testnet at `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906`.
-- **Non-Custodial Design**: The contract never holds user capital. It verifies ownership, records state transitions (`openHedge`, `rebalanceHedge`, `closeHedge`), logs risk events, and enforces leverage bounds on-chain.
-- **GraphQL Indexing**: Integrated with Envio HyperIndex for real-time subgraph indexing of CarryLedger events and historical telemetry.
+We deployed the `CarryLedger.sol` contract on Monad Testnet at `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906`.
 
-## Relevant Files and Folders in the Repository
+- **It never holds your money**: Your funds stay in your own wallet and on the exchanges.
+- **It keeps an honest public record**: Whenever a hedge opens, trims, or closes, it records an unchangeable proof on the Monad blockchain so anyone can verify it.
+- **Indexed with Envio**: We connected Envio HyperIndex so these on-chain proofs can be searched quickly.
 
-The risk management architecture and on-chain audit trail include smart contracts, engine daemons, and indexer handlers:
+## Relevant files and folders in the repository
 
-- `contracts/src/CarryLedger.sol`: Core Solidity contract on Monad Testnet logging verified proofs of hedge, risk actions, and policy caps.
-- `contracts/test/CarryLedger.t.sol`: Foundry unit test suite covering state transitions, rebalance boundaries, and non-custodial invariants.
-- `contracts/script/GasBenchmark.s.sol`: Monad gas measurement script testing execution costs for open, rebalance, and close transactions.
-- `backend/src/engine/riskEngine.ts`: Mathematical evaluation of live margin ratios, tier classifications, and deleveraging ratios.
-- `backend/src/engine/unwindEngine.ts`: Fail-safe exit module handling reduce-only Perpl closures and Kuru spot liquidations.
-- `backend/src/risk/riskDaemon.ts`: Background monitoring service polling position health on every Monad block.
-- `backend/src/test/stressHarness.test.ts`: Stress testing harness simulating +25%, +45%, and +65% market price shocks and flash wicks.
-- `indexer/config.yaml`: Envio HyperIndex configuration mapping CarryLedger event signatures on Monad Testnet.
-- `indexer/schema.graphql`: GraphQL schema defining indexed entities for user positions, guard interventions, and drift logs.
-- `indexer/src/EventHandlers.ts`: Event ingestion handlers writing parsed Monad transactions into the HyperIndex database.
+- `contracts/src/CarryLedger.sol`: The Solidity smart contract deployed on Monad that records public proof of your trades.
+- `contracts/test/CarryLedger.t.sol`: Automated tests verifying the contract rules and proving it never locks your funds.
+- `contracts/script/GasBenchmark.s.sol`: Script measuring how little gas the contract uses on Monad.
+- `backend/src/engine/riskEngine.ts`: The math behind the three safety tiers that decides when to top up or trim.
+- `backend/src/engine/unwindEngine.ts`: Closes both the short and spot positions cleanly to turn everything back into cash.
+- `backend/src/risk/riskDaemon.ts`: The background helper that watches position safety on every Monad block.
+- `backend/src/test/stressHarness.test.ts`: Stress tests that simulate sudden +25%, +45%, and +65% market spikes to prove the safety system works.
+- `indexer/config.yaml`: Setup file connecting Envio to our contract on Monad.
+- `indexer/schema.graphql`: Blueprint of the data saved by the indexer.
+- `indexer/src/EventHandlers.ts`: Code that catches on-chain contract events and saves them to the database.

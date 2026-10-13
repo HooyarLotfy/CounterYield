@@ -1,49 +1,49 @@
 # Update 3: Seedless Biometric Mobile Client and Live Telemetry Architecture
 
-## Overview
+## What this update does
 
-CounterYield delivers a consumer mobile experience for delta-neutral yield on Monad, removing seed phrases and wallet popups through hardware-level biometric authentication.
+This update gives CounterYield a simple mobile app where you log in with your face or fingerprint, with zero seed phrases and real-time live data from Monad.
 
 ## The Problem
 
-Most decentralized finance applications require browser extensions, seed phrase backups, and transaction confirmations with raw hex data. This friction limits participation to experienced crypto traders.
+Most crypto apps are annoying to use:
+- You have to write down 12 random words on paper and hope you do not lose them.
+- You have to install browser wallet extensions and approve confusing popups with raw computer code.
+- If you lose your paper backup, your money is gone forever.
 
-## Technical Implementation
+CounterYield works like Apple Pay or your regular banking app: you use your face, fingerprint, or device passcode.
 
-We built a mobile application using Expo React Native supporting iOS, Android, and Web:
+## How the mobile wallet works
 
-1. **Hardware Biometric Key Derivation**:
-   - Integrates WebAuthn PRF with device Secure Enclaves (Face ID on iOS, BiometricPrompt on Android, and WebAuthn/webcam simulation on Web).
-   - Generates a unique 256-bit seed per device, deriving a dedicated Monad EVM wallet address deterministically.
-   - Encrypts session signing keys at rest using AES-256-GCM via the Web Crypto API (`crypto.subtle`), held in volatile memory only during active sessions.
-   - Persists encrypted credentials safely via `expo-secure-store` on native platforms and `localStorage` on web.
+1. **Your phone creates your keys**:
+   - The app asks your phone's built-in security chip (Secure Enclave) to create your wallet keys using WebAuthn PRF.
+   - You unlock your account with Face ID on iPhone, fingerprint on Android, or your device passcode on a laptop.
 
-2. **Real-Time Data Feeds**:
-   - Fetches live ERC-20 AUSD balances directly from Monad Testnet RPC via `eth_call`.
-   - Connects to an active WebSocket telemetry stream (`ws/telemetry`) with automatic exponential backoff reconnection.
-   - Displays live Kuru CLOB orderbook depth, bid/ask spreads, and Monad testnet block numbers.
+2. **Keys stay on your device**:
+   - The keys are encrypted with AES-256-GCM and stored only inside your phone's secure memory (`expo-secure-store` on phones, `localStorage` on web).
+   - They are never sent to any server or shared with anyone.
 
-3. **Uniswap Spore-Grade Interface**:
-   - Designed around a matte charcoal palette (`#131313`, `#1F1F1F`) with calibrated non-neon lime accents (`#9FE825`).
-   - Features custom vector logo marks for Kuru, Perpl, Monad, and Agora.
-   - Structured into a 3-step educational onboarding flow explaining the strategy, venue mechanics, and device security.
+3. **No seed phrases**:
+   - You never have to write down or store 12 secret words. Your phone hardware holds the keys safely.
 
-## Relevant Files and Folders in the Repository
+## Live real-time connection to Monad
 
-The mobile client, authentication vault, and telemetry hooks are organized into dedicated subdirectories within the mobile package:
+The app does not use fake or simulated numbers:
+- **Real AUSD balance**: Queries your real balance directly from Monad testnet using an RPC call on every login.
+- **Live price stream**: A WebSocket connection streams live mark prices, safety margin levels, and accrued funding earnings to your screen every second.
+- **Live Kuru orderbook**: A dedicated Spot screen lets you see the actual bids and asks on Kuru's Monad orderbook.
+- **Clear vector logos**: Custom, clean logos for Kuru, Perpl, Monad, and AUSD so you always know which exchange holds each part of your trade.
 
-- `mobile/src/auth/meraAuth.ts`: Device biometric capability detection, operating system authentication prompt triggers, and deterministic wallet address derivation.
-- `mobile/src/auth/prfVault.ts`: Hardware-isolated credential vault using Web Crypto API (`crypto.subtle`) for authenticated AES-256-GCM encryption.
-- `mobile/src/components/Logos.tsx`: Precision SVG vector logos for Kuru CLOB, Perpl DEX, Monad (MON), and Agora (AUSD).
-- `mobile/src/screens/WelcomeScreen.tsx`: 3-step educational onboarding explaining delta-neutral mechanics, connected DEX venues, and biometric setup.
-- `mobile/src/screens/HomeScreen.tsx`: Core portfolio view displaying net delta, live funding APY, and real-time WebSocket connection state.
-- `mobile/src/screens/StartEarningScreen.tsx`: Single-tap deposit form with preset chips, automated capital sizing breakdown, and break-even estimations.
-- `mobile/src/screens/SpotScreen.tsx`: Standalone orderbook depth viewer for Kuru MON/AUSD market displaying real-time bids and asks.
-- `mobile/src/screens/ActivityScreen.tsx`: Auditable transaction feed linking verified on-chain executions to the Monadscan explorer.
-- `mobile/src/services/useTelemetry.ts`: WebSocket client hook managing live subscription state and reconnection logic.
-- `mobile/src/state/store.ts`: Central Zustand application store managing user authentication and Monad RPC balance queries.
-- `mobile/src/theme.ts`: Design system tokens establishing Spore dark matte charcoal surfaces, spacing scales, and typography hierarchies.
+## Relevant files and folders in the repository
 
-## Outcome
-
-Users can open the app, authenticate with Face ID in two seconds, deposit AUSD, and monitor their position in real time with zero seed phrases or browser extension setup.
+- `mobile/src/auth/meraAuth.ts`: Checks what biometrics your device supports and creates your unique wallet address.
+- `mobile/src/auth/prfVault.ts`: Uses your device's security chip to encrypt your trading keys with AES-256-GCM.
+- `mobile/src/components/Logos.tsx`: Clean vector logo drawings for Kuru, Perpl, Monad, and Agora.
+- `mobile/src/screens/WelcomeScreen.tsx`: 3-step setup explaining how the trade works, which exchanges we use, and biometric login.
+- `mobile/src/screens/HomeScreen.tsx`: Main dashboard showing your balance, live funding yield, and both sides of your trade.
+- `mobile/src/screens/StartEarningScreen.tsx`: 1-tap deposit screen that lets you pick an amount and open your position.
+- `mobile/src/screens/SpotScreen.tsx`: Live orderbook viewer showing buy and sell orders on Kuru.
+- `mobile/src/screens/ActivityScreen.tsx`: List of your past trades with clickable links to check them on the Monad block explorer.
+- `mobile/src/services/useTelemetry.ts`: WebSocket helper that stays connected to the live price feed and reconnects automatically if dropped.
+- `mobile/src/state/store.ts`: The central memory of the app that stores your balance, active trade, and login state.
+- `mobile/src/theme.ts`: Color palette using dark charcoal (`#131313`) and clean lime green (`#9FE825`).

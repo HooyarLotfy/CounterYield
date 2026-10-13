@@ -1,51 +1,58 @@
 # Update 1: Dual-Leg Execution Engine Across Kuru and Perpl
 
-## Overview
+## What this update does
 
-CounterYield coordinates on-chain spot buys and perpetual short positions into a single automated execution flow on Monad testnet.
+CounterYield tries to earn money from the funding fees paid by crypto traders, without betting on whether MON goes up or down.
 
-## The Problem
+1. You deposit AUSD.
+2. 10% stays as a safety reserve.
+3. The app buys MON on Kuru.
+4. At the same time, it shorts the same amount of MON on Perpl.
+5. If MON goes up, the spot position gains while the short loses.
+6. If MON goes down, the spot position loses while the short gains.
 
-Cash-and-carry funding arbitrage is one of the most reliable market-neutral strategies in finance, but executing it manually across decentralized exchanges is impractical for everyday users:
-- Users must manage separate accounts and collateral across two independent venues.
-- Order sizes must be calculated and matched precisely to maintain zero directional exposure.
-- Execution latency between legs creates unwanted price drift.
-- Managing margin collateral requires continuous round-the-clock monitoring.
+So the two positions roughly cancel each other out, meaning you're mainly trying to earn the funding payments.
 
-## Technical Implementation
+In simple terms:
+Buy MON + short the same MON amount = price movement mostly cancels out -> collect funding fees.
 
-We built a backend engine native to Monad testnet that coordinates Kuru CLOB and Perpl DEX:
+## Why this engine was built
 
-1. **Spot Leg (Kuru CLOB)**:
-   - Routes market orders through Kuru's central limit order book router (`0x7EFbE105Ca7415dE98F96622173458ac1c054630`) to accumulate spot MON.
-   - Supports client-signed transaction broadcasting from user-owned keys.
+Doing this trade by hand is frustrating and risky:
+- You would have to open two separate exchange accounts and move money between them.
+- You have to do math to make sure the buy and short are the exact same dollar size.
+- If you buy first and wait a minute before shorting, the price can move and mess up the whole trade.
+- You have to watch the screen constantly to make sure your short never gets liquidated.
 
-2. **Perp Leg (Perpl DEX)**:
-   - Opens an equal 1x short hedge on Perpl Market ID 64 (MON-PERP) using Immediate-Or-Cancel (IOC) orders.
-   - Queries live Monad block heights (~70M) to set valid order time-to-live windows, preventing premature expiration.
+This engine does both legs for you automatically in one tap.
 
-3. **Capital Sizing & Buffer**:
-   - User deposits in Agora Dollar (AUSD) are split deterministically:
-     - 10% unencumbered AUSD liquidity buffer held in reserve.
-     - 45% spot MON buy on Kuru.
-     - 45% perp margin collateral on Perpl.
+## How the two legs work together
 
-4. **Gas & Execution Optimization**:
-   - Configured with strict declared gas limits (411k open, 57k rebalance, 38k guard) tailored for Monad's parallel execution environment.
+When you tap deposit, the engine runs these steps:
 
-## Relevant Files and Folders in the Repository
+1. **Spot Buy on Kuru**:
+   - The app buys spot MON on Kuru's on-chain orderbook (`0x7EFbE105Ca7415dE98F96622173458ac1c054630`).
+   - Your own wallet signs the transaction directly.
 
-The implementation spans the backend trading engine, client adapters, and shared mathematical sizing models:
+2. **Perp Short on Perpl**:
+   - At the exact same time, the engine opens a 1x short position on Perpl Market ID 64.
+   - It checks Monad's live block number (around block 70 million) to make sure the order stays valid long enough to fill without timing out.
 
-- `backend/src/engine/strategyEngine.ts`: Core orchestrator that executes the atomic dual-leg entry, checks pre-trade eligibility, and validates execution bounds.
-- `backend/src/engine/spotExecutor.ts`: Spot execution adapter that handles client-signed Kuru fills broadcast from user wallets.
-- `backend/src/clients/kuruClient.ts`: Viem-based client encoding Kuru router calldata and fetching live CLOB market depth.
-- `backend/src/clients/perplClient.ts`: Perpl REST API integration with Ed25519 signature generation and dynamic Monad block height queries.
-- `backend/src/api/routes/strategyRoutes.ts`: Fastify route handlers exposing `/api/v1/strategy/enter`, `/market/quote`, `/rebalance`, and `/unwind`.
-- `shared/src/calculators/OrderSizer.ts`: Deterministic capital allocation model splitting deposits into 10% cash buffer and two equal 45% legs.
-- `shared/src/calculators/BreakEvenCalculator.ts`: Formulas calculating net annual percentage yield and estimated time-to-profit after round-trip taker fees.
-- `backend/src/test/engine.test.ts`: Automated test suite covering dual-leg coordination, order sizer math, and API endpoints.
+3. **Automatic 10% Safety Buffer**:
+   - 10% of your deposit stays in cash as a reserve.
+   - The other 90% is split equally: 45% buys spot MON on Kuru, and 45% backs the short on Perpl.
 
-## Outcome
+4. **Guaranteed 1-Tap Exit**:
+   - Whenever you want your money back, tap Unwind.
+   - The app closes the short on Perpl, sells the spot MON on Kuru, and gives you back 100% AUSD.
 
-Users achieve delta-neutral dollar exposure (delta = $0.00) in one tap. Price movements on MON cancel out, allowing users to earn the continuous funding rate (~18.4% APY) denominated entirely in AUSD.
+## Relevant files and folders in the repository
+
+- `backend/src/engine/strategyEngine.ts`: Runs the trade engine, checking safety rules before opening both legs.
+- `backend/src/engine/spotExecutor.ts`: Connects your wallet's Kuru spot buy transaction to the backend.
+- `backend/src/clients/kuruClient.ts`: Talk to Kuru's smart contracts on Monad to check prices and place spot orders.
+- `backend/src/clients/perplClient.ts`: Sends short orders to Perpl and checks the live Monad block number.
+- `backend/src/api/routes/strategyRoutes.ts`: API endpoints for opening trades, getting quotes, and unwinding.
+- `shared/src/calculators/OrderSizer.ts`: Math that splits your deposit into 10% cash reserve and two equal 45% legs.
+- `shared/src/calculators/BreakEvenCalculator.ts`: Calculates how many days of funding it takes to cover trading fees.
+- `backend/src/test/engine.test.ts`: Automated tests that check the trade engine and math.

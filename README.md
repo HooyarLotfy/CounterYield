@@ -1,19 +1,22 @@
 # CounterYield
 
-Delta-neutral dollar yield on Monad testnet. Built for the Monad Metropolis Hackathon.
+Earn funding fees on Monad testnet without betting on crypto prices.
 
 ## What it does
 
-When people trade perpetual futures, they pay an ongoing funding fee to keep their positions open. Professional trading desks take the other side of this trade: they buy spot crypto and short the exact same amount on perpetuals. This lets them collect funding payments while carrying zero price risk.
+CounterYield tries to earn money from the funding fees paid by crypto traders, without betting on whether MON goes up or down.
 
-CounterYield automates this basis trade from your phone.
+1. You deposit AUSD.
+2. 10% stays as a safety reserve.
+3. The app buys MON on Kuru.
+4. At the same time, it shorts the same amount of MON on Perpl.
+5. If MON goes up, the spot position gains while the short loses.
+6. If MON goes down, the spot position loses while the short gains.
 
-When you deposit Agora Dollar (AUSD), the app:
-1. Holds 10% in liquid AUSD as a protective reserve buffer.
-2. Buys MON spot on Kuru (Monad's on-chain orderbook).
-3. Opens an equal 1x short on Perpl (Monad's perpetual DEX).
+So the two positions roughly cancel each other out, meaning you're mainly trying to earn the funding payments.
 
-Because your spot buy and perp short are identical in size, price movements cancel each other out (delta = $0.00). If MON doubles or drops 50%, your dollar value stays safe while you collect the continuous funding rate paid by long traders (currently ~18.4% APY).
+In simple terms:
+Buy MON + short the same MON amount = price movement mostly cancels out -> collect funding fees.
 
 ## How a $1,000 deposit works
 
@@ -24,69 +27,69 @@ Because your spot buy and perp short are identical in size, price movements canc
         |                       |                       |
         v                       v                       v
    $100 (10%)              $450 (45%)              $450 (45%)
- Reserve Buffer          Kuru Spot Buy           Perpl 1x Short
-(Cash protection)          Long MON                Short MON
+ Safety Reserve           Buys MON Spot           Shorts MON 1x
+(Cash protection)        on Kuru orderbook       on Perpl exchange
         |                       |                       |
         |                       +-----------+-----------+
         |                                   |
         v                                   v
-  Protects against                Net Delta = $0.00
-  liquidation wicks              (Zero price exposure)
+  Protects if price               Price changes cancel out
+  moves too fast                  (Zero directional bet)
                                             |
                                             v
-                                    Earn ~18.4% APY
-                                (Continuous funding fee)
+                                   Collect funding fees
+                                   (currently ~18.4% APY)
 ```
 
-## How the Risk Guard works
+## How the Risk Guard protects you
 
-If MON spikes rapidly, your short leg loses margin while your spot holdings gain an equal amount of dollar value. To make sure your short never gets liquidated on the exchange, an automated Risk Guard monitors your margin ratio on every block:
+When MON's price goes up, your spot holding makes money, but your short position needs more collateral to avoid liquidation. The app automatically checks your account on every block:
 
-| Tier | Margin Ratio | Action Taken |
-| :--- | :--- | :--- |
-| Normal | 60% or higher | Position runs normally. Monitored every block. |
-| Tier 1 | 40% to 60% | Automatically transfers cash from your 10% reserve buffer into Perpl margin. |
-| Tier 2 | 25% to 40% | If the buffer is empty, sells 20% of spot MON on Kuru and closes 20% of the Perpl short. |
-| Tier 3 | Under 25% (2 blocks) | Closes both legs into 100% AUSD before any exchange liquidation can occur. |
+- Normal (margin at 60% or more): Everything runs normally.
+- Tier 1 (margin drops between 40% and 60%): The app moves money from your 10% safety reserve into your short position to top it up.
+- Tier 2 (margin drops between 25% and 40%): If the safety reserve is empty, the app sells 20% of your spot MON and closes 20% of your short position to stay safe.
+- Tier 3 (margin drops below 25% for 2 blocks in a row): The app closes both positions and turns everything back into AUSD cash before the exchange can ever liquidate you.
 
-You can also tap Unwind at any time to exit both legs and get your money back in AUSD.
+You can also tap Unwind anytime to exit both positions and get your cash back in AUSD.
 
-## Account security
+## How login and wallet security work
 
-There are no seed phrases. You sign in using your phone's Face ID, Touch ID, or your device passcode.
-
-Your session keys are generated inside your device's Secure Enclave using WebAuthn PRF and encrypted with AES-256-GCM. Private keys stay on your hardware and never touch a centralized server.
+You do not need to write down or save any seed phrases:
+- You sign in with Face ID, Touch ID, or your phone passcode.
+- Your phone's hardware chip (Secure Enclave) creates your keys using WebAuthn PRF.
+- Keys are encrypted with AES-256-GCM and stay on your phone. They are never sent to any server.
 
 ## Monad Testnet contracts
 
-| Component | Address / Identifier | Details |
+| Component | Address / Details | What it is |
 | :--- | :--- | :--- |
-| Chain | Monad Testnet | Chain ID 10143 |
-| RPC | `https://testnet-rpc.monad.xyz` | Official RPC |
-| Explorer | [testnet.monadscan.com](https://testnet.monadscan.com) | Block explorer |
-| Agora AUSD | `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a` | ERC-20 stablecoin |
-| CarryLedger | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | Non-custodial on-chain audit contract |
-| Kuru Router | `0x7EFbE105Ca7415dE98F96622173458ac1c054630` | Spot CLOB router |
-| Perpl Market | Market ID 64 | MON-PERP market |
+| Network | Monad Testnet | Chain ID 10143 |
+| RPC | `https://testnet-rpc.monad.xyz` | Testnet RPC connection |
+| Explorer | [testnet.monadscan.com](https://testnet.monadscan.com) | Monad block explorer |
+| Agora AUSD | `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a` | Dollar stablecoin |
+| CarryLedger | `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906` | Public audit contract on Monad |
+| Kuru Router | `0x7EFbE105Ca7415dE98F96622173458ac1c054630` | Spot orderbook router |
+| Perpl Market | Market ID 64 | MON perp trading market |
 
 ## Project layout
 
 ```
-backend/     Fastify API, WebSocket telemetry, and dual-leg execution engine
-mobile/      Expo React Native app (iOS, Android, Web)
-contracts/   CarryLedger.sol and Foundry test suite
-indexer/     Envio HyperIndex GraphQL setup
-shared/      Shared math models and types
-TX_LOG.md    Audit log of all on-chain deployments and test transactions
+backend/     API, WebSocket price stream, and trade execution engine
+mobile/      Mobile app for iOS, Android, and Web
+contracts/   CarryLedger.sol smart contract and test suite
+indexer/     Envio HyperIndex for searching on-chain events
+shared/      Shared math and calculations
+TX_LOG.md    Log of real on-chain transactions and deployments
+updates/     Detailed project updates for hackathon review
 ```
 
-## Running locally
+## Running the project locally
 
 ### Prerequisites
 - Node.js 20+
 - npm 10+
 
-### 1. Install dependencies
+### 1. Install packages
 ```bash
 npm install
 ```
@@ -95,20 +98,20 @@ npm install
 ```bash
 npm --prefix backend run dev
 ```
-Starts the API and WebSocket server on `http://localhost:4000`.
+Runs the server on `http://localhost:4000`.
 
 ### 3. Run backend tests
 ```bash
 npm --prefix backend test
 ```
-Runs the 15-test unit, stress harness, and risk engine suite.
+Runs 15 automated tests covering trades, calculations, and safety rules.
 
 ### 4. Start the mobile app
 ```bash
 npm --prefix mobile start
 ```
-- Press `w` to open the web version in your browser (includes webcam Face ID simulation).
-- Or scan the QR code using Expo Go on your phone.
+- Press `w` to open in your web browser (supports webcam for face scan demo).
+- Or scan the QR code with Expo Go on your mobile phone.
 
 ## License
 
