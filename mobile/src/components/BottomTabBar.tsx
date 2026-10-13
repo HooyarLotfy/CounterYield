@@ -5,12 +5,12 @@ import { colors, radius } from "../theme";
 import {
   Home,
   Zap,
-  ArrowLeftRight,
+  Layers,
   Clock,
 } from "lucide-react-native";
 
 interface TabItem {
-  key: "home" | "earn" | "spot" | "activity";
+  key: "home" | "earn" | "portfolio" | "activity";
   label: string;
   IconComponent: any;
 }
@@ -18,7 +18,7 @@ interface TabItem {
 const TABS: TabItem[] = [
   { key: "home", label: "Home", IconComponent: Home },
   { key: "earn", label: "Earn", IconComponent: Zap },
-  { key: "spot", label: "CLOB", IconComponent: ArrowLeftRight },
+  { key: "portfolio", label: "Portfolio", IconComponent: Layers },
   { key: "activity", label: "Activity", IconComponent: Clock },
 ];
 

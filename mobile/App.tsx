@@ -5,7 +5,7 @@ import { WelcomeScreen } from "./src/screens/WelcomeScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { StartEarningScreen } from "./src/screens/StartEarningScreen";
 import { PositionScreen } from "./src/screens/PositionScreen";
-import { SpotScreen } from "./src/screens/SpotScreen";
+import { PortfolioScreen } from "./src/screens/PortfolioScreen";
 import { ActivityScreen } from "./src/screens/ActivityScreen";
 import { BottomTabBar } from "./src/components/BottomTabBar";
 import { UnwindModal } from "./src/components/UnwindModal";
@@ -23,8 +23,9 @@ export default function App() {
         return <HomeScreen />;
       case "earn":
         return <StartEarningScreen />;
+      case "portfolio":
       case "spot":
-        return <SpotScreen />;
+        return <PortfolioScreen />;
       case "activity":
         return <ActivityScreen />;
       default:
