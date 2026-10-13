@@ -16,12 +16,12 @@ const envSchema = z.object({
   MONAD_EXPLORER_URL: z.string().url().default('https://testnet.monadscan.com'),
 
   // Contracts
-  AUSD_TOKEN_ADDRESS: z.string().default('0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a'),
+  AUSD_TOKEN_ADDRESS: z.string().default('0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC'),
   KURU_ROUTER_ADDRESS: z.string().default('0x7EFbE105Ca7415dE98F96622173458ac1c054630'),
   KURU_MARKET_MON_USDC: z.string().default('0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9'),
-  CARRY_LEDGER_ADDRESS: z.string().default('0x0000000000000000000000000000000000000000'),
-  // Kuru L2 data source (no default on purpose: depth is never invented). Verify the endpoint on day one.
-  KURU_API_URL: z.string().url().optional(),
+  CARRY_LEDGER_ADDRESS: z.string().default('0x9998a7776edddf2f2ab6ffbb9420e5194a50f906'),
+  KURU_API_URL: z.string().url().default('https://exchange.kuru.io/api/v3/depth?symbol=mon_usdc'),
+  KURU_WS_URL: z.string().default('wss://exchange.kuru.io/ws'),
 
   // Perpl
   PERPL_API_URL: z.string().url().default('https://testnet.perpl.xyz/api'),
