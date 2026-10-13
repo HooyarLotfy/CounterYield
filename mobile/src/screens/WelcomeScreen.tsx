@@ -191,25 +191,25 @@ export const WelcomeScreen: React.FC = () => {
               <View style={styles.cardList}>
                 {/* 1. Delta-Neutral */}
                 <View style={styles.explainCard}>
-                  <View style={styles.cardIconBox}>
-                    <Zap size={18} color={colors.lime} strokeWidth={2.4} />
+                  <View style={styles.cardIconBoxLarge}>
+                    <Zap size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
                     <Text style={styles.cardTitle}>Zero Price Exposure</Text>
-                    <Text style={styles.cardBody}>
-                      Long spot + equal short. MON moves cancel out.
+                    <Text style={styles.cardBody} numberOfLines={1}>
+                      Long spot + equal short. Price moves cancel out.
                     </Text>
                   </View>
                 </View>
 
                 {/* 2. Funding Yield */}
                 <View style={styles.explainCard}>
-                  <View style={styles.cardIconBox}>
-                    <TrendingUp size={18} color={colors.lime} strokeWidth={2.4} />
+                  <View style={styles.cardIconBoxLarge}>
+                    <TrendingUp size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
                     <Text style={styles.cardTitle}>Funding Yield</Text>
-                    <Text style={styles.cardBody}>
+                    <Text style={styles.cardBody} numberOfLines={1}>
                       Perp longs pay shorts hourly. You collect it.
                     </Text>
                   </View>
@@ -217,13 +217,13 @@ export const WelcomeScreen: React.FC = () => {
 
                 {/* 3. 10% Reserve Buffer */}
                 <View style={styles.explainCard}>
-                  <View style={styles.cardIconBox}>
-                    <Shield size={18} color={colors.lime} strokeWidth={2.4} />
+                  <View style={styles.cardIconBoxLarge}>
+                    <Shield size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
                     <Text style={styles.cardTitle}>Liquidation Buffer</Text>
-                    <Text style={styles.cardBody}>
-                      10% stays in AUSD to top up margin on spikes.
+                    <Text style={styles.cardBody} numberOfLines={1}>
+                      10% in liquid AUSD protects against spikes.
                     </Text>
                   </View>
                 </View>
@@ -256,8 +256,8 @@ export const WelcomeScreen: React.FC = () => {
               <View style={styles.cardList}>
                 {/* 1. Kuru CLOB */}
                 <View style={styles.explainCard}>
-                  <View style={[styles.cardIconBox, { backgroundColor: "transparent" }]}>
-                    <KuruLogo size={32} />
+                  <View style={[styles.cardIconBoxLarge, { backgroundColor: "transparent" }]}>
+                    <KuruLogo size={44} />
                   </View>
                   <View style={styles.cardContent}>
                     <View style={styles.badgeRow}>
@@ -266,7 +266,7 @@ export const WelcomeScreen: React.FC = () => {
                         <Text style={[styles.venueBadgeText, { color: colors.kuruOrange }]}>Spot Order Book</Text>
                       </View>
                     </View>
-                    <Text style={styles.cardBody}>
+                    <Text style={styles.cardBody} numberOfLines={1}>
                       Onchain order book. We buy spot MON here.
                     </Text>
                   </View>
@@ -274,8 +274,8 @@ export const WelcomeScreen: React.FC = () => {
 
                 {/* 2. Perpl DEX */}
                 <View style={styles.explainCard}>
-                  <View style={[styles.cardIconBox, { backgroundColor: "transparent" }]}>
-                    <PerplLogo size={32} />
+                  <View style={[styles.cardIconBoxLarge, { backgroundColor: "transparent" }]}>
+                    <PerplLogo size={44} />
                   </View>
                   <View style={styles.cardContent}>
                     <View style={styles.badgeRow}>
@@ -284,16 +284,16 @@ export const WelcomeScreen: React.FC = () => {
                         <Text style={[styles.venueBadgeText, { color: colors.monadViolet }]}>Perpetuals DEX</Text>
                       </View>
                     </View>
-                    <Text style={styles.cardBody}>
-                      Perp DEX. We open the 1x short here with IOC orders.
+                    <Text style={styles.cardBody} numberOfLines={1}>
+                      Perp DEX. We open the 1x short hedge here.
                     </Text>
                   </View>
                 </View>
 
                 {/* 3. CarryLedger Contract */}
                 <View style={styles.explainCard}>
-                  <View style={styles.cardIconBox}>
-                    <Layers size={18} color={colors.lime} strokeWidth={2.4} />
+                  <View style={styles.cardIconBoxLarge}>
+                    <Layers size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
                     <View style={styles.badgeRow}>
@@ -302,8 +302,8 @@ export const WelcomeScreen: React.FC = () => {
                         <Text style={styles.venueBadgeText}>Non-Custodial</Text>
                       </View>
                     </View>
-                    <Text style={styles.cardBody}>
-                      Non-custodial contract at 0x9998...f906. Records every hedge.
+                    <Text style={styles.cardBody} numberOfLines={1}>
+                      Non-custodial ledger. Records every hedge.
                     </Text>
                   </View>
                 </View>
@@ -542,6 +542,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
+  },
+  cardIconBoxLarge: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.limeSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
   },
   cardContent: {
     flex: 1,
