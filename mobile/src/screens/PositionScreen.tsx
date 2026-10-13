@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { usePosition } from "../state/hooks/usePosition";
+import { useAppStore } from "../state/store";
 import { colors, radius, space } from "../theme";
 import {
   Shield,
@@ -17,14 +18,48 @@ import {
   CheckCircle2,
   Lock,
   ArrowRight,
+  Zap,
 } from "lucide-react-native";
 
 export const PositionScreen: React.FC = () => {
   const { position, openUnwindModal, openRiskGuardModal } = usePosition();
+  const { setActiveTab } = useAppStore();
 
-  const marginRatio = position?.marginRatio ?? 0.95;
+  const hasActivePosition = Boolean(
+    position && position.state === "ACTIVE" && (position.depositAmount || 0) > 0
+  );
+
   const currentTier = position?.tier ?? "NORMAL";
-  const distanceToLiq = position?.distanceToLiquidationPercent ?? 82.0;
+
+  // Real Distance-to-Liquidation formula from Metropolis specification:
+  // Short Perp liquidation triggers when loss depletes margin down to MMR (5%).
+  // P_liq = ( (PerpMargin + ReserveBuffer) / BaseQty + EntryPrice ) / (1 + MMR)
+  // Distance (%) = ((P_liq - MarkPrice) / MarkPrice) * 100
+  let distanceToLiq = 0;
+  let liqPriceFormatted = "N/A";
+
+  if (hasActivePosition && position) {
+    const entryPrice =
+      parseFloat(position.perpLeg?.entryPrice || "0") || (position.spotPrice || 0);
+    const markPrice =
+      position.perpMarkPrice > 0 ? position.perpMarkPrice : entryPrice;
+    const qty =
+      position.perpQuantity || parseFloat(position.perpLeg?.quantity || "0") || 0;
+    const perpMargin =
+      ((position.depositAmount || 0) - (position.reserveBuffer || 0)) / 2;
+    const reserveBuffer = position.reserveBuffer || 0;
+    const totalEffectiveMargin = perpMargin + reserveBuffer;
+    const mmr = 0.05; // 5% maintenance margin requirement on Perpl
+
+    if (qty > 0 && markPrice > 0 && entryPrice > 0) {
+      const liqPrice = (totalEffectiveMargin / qty + entryPrice) / (1 + mmr);
+      distanceToLiq = ((liqPrice - markPrice) / markPrice) * 100;
+      liqPriceFormatted = `$${liqPrice.toFixed(4)}`;
+    } else if (position.distanceToLiquidationPercent) {
+      distanceToLiq = position.distanceToLiquidationPercent;
+      liqPriceFormatted = `$${(markPrice * (1 + distanceToLiq / 100)).toFixed(4)}`;
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,9 +77,11 @@ export const PositionScreen: React.FC = () => {
             <ChevronLeft size={20} color={colors.textPrimary} />
             <Text style={styles.backButtonText}>Close</Text>
           </TouchableOpacity>
-          <View style={styles.statusBadge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>Defense Active</Text>
+          <View style={[styles.statusBadge, !hasActivePosition && styles.statusBadgeIdle]}>
+            <View style={[styles.statusDot, !hasActivePosition && styles.statusDotIdle]} />
+            <Text style={[styles.statusText, !hasActivePosition && styles.statusTextIdle]}>
+              {hasActivePosition ? "Defense Active" : "Standby"}
+            </Text>
           </View>
         </View>
 
@@ -56,17 +93,32 @@ export const PositionScreen: React.FC = () => {
         {/* Distance to Liquidation Gauge */}
         <View style={styles.gaugeCard}>
           <Text style={styles.gaugeLabel}>Distance to Exchange Liquidation</Text>
-          <Text style={styles.gaugePercent}>{distanceToLiq.toFixed(1)}%</Text>
-          <Text style={styles.gaugeStatus}>Safe Zone · Liquidation Immunity Active</Text>
-
-          <View style={styles.progressBarBackground}>
-            <View
-              style={[
-                styles.progressBarFill,
-                { width: `${Math.min(100, Math.max(0, distanceToLiq))}%` },
-              ]}
-            />
-          </View>
+          {hasActivePosition ? (
+            <>
+              <Text style={styles.gaugePercent}>+{distanceToLiq.toFixed(1)}%</Text>
+              <Text style={styles.gaugeStatus}>
+                Safe Zone · Liq Price: {liqPriceFormatted} · MMR: 5.0%
+              </Text>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${Math.min(100, Math.max(0, distanceToLiq))}%` },
+                  ]}
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.gaugePercent, styles.gaugePercentIdle]}>Vault Idle</Text>
+              <Text style={styles.gaugeStatus}>
+                No Open Position · Risk Guard in Standby
+              </Text>
+              <View style={styles.progressBarBackground}>
+                <View style={[styles.progressBarFill, { width: "0%" }]} />
+              </View>
+            </>
+          )}
         </View>
 
         {/* 3-Tier Risk Guard Ladder */}
@@ -76,7 +128,8 @@ export const PositionScreen: React.FC = () => {
         <View
           style={[
             styles.tierCard,
-            currentTier === "NORMAL" || currentTier === "TIER_1_TOPUP"
+            hasActivePosition &&
+            (currentTier === "NORMAL" || currentTier === "TIER_1_TOPUP")
               ? styles.tierCardActiveGreen
               : null,
           ]}
@@ -97,7 +150,9 @@ export const PositionScreen: React.FC = () => {
         <View
           style={[
             styles.tierCard,
-            currentTier === "TIER_2_DELEVERAGE" ? styles.tierCardActiveAmber : null,
+            hasActivePosition && currentTier === "TIER_2_DELEVERAGE"
+              ? styles.tierCardActiveAmber
+              : null,
           ]}
         >
           <View style={styles.tierHeader}>
@@ -116,7 +171,9 @@ export const PositionScreen: React.FC = () => {
         <View
           style={[
             styles.tierCard,
-            currentTier === "TIER_3_EMERGENCY" ? styles.tierCardActiveRed : null,
+            hasActivePosition && currentTier === "TIER_3_EMERGENCY"
+              ? styles.tierCardActiveRed
+              : null,
           ]}
         >
           <View style={styles.tierHeader}>
@@ -131,71 +188,31 @@ export const PositionScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Judge / Tester Interactive Risk Guard Fire Drill */}
-        <View style={styles.fireDrillCard}>
-          <View style={styles.fireDrillHeader}>
-            <View style={styles.fireDrillTag}>
-              <Shield size={12} color={colors.monadViolet} />
-              <Text style={styles.fireDrillTagText}>TESTER FIRE DRILL</Text>
-            </View>
-            <Text style={styles.fireDrillRatioText}>Simulate Flash Wick</Text>
-          </View>
-          <Text style={styles.fireDrillDesc} numberOfLines={1}>
-            Simulate a sudden price shock to observe Monad 1-second automated rebalancing live.
-          </Text>
-
-          <View style={styles.fireDrillActions}>
-            <TouchableOpacity
-              style={[styles.fireDrillBtn, { borderColor: colors.lime }]}
-              activeOpacity={0.8}
-              onPress={async () => {
-                try {
-                  await fetch("http://localhost:4000/api/v1/risk/fire-drill", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ targetTier: 1, simulatedDropPercent: 25 }),
-                  });
-                  alert("Tier 1 Reserve Top-Up triggered! Reserve margin credited.");
-                } catch (e) {
-                  alert("Fire drill executed locally.");
-                }
-              }}
-            >
-              <Text style={[styles.fireDrillBtnText, { color: colors.lime }]}>+25% Spike (Tier 1)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.fireDrillBtn, { borderColor: colors.amber }]}
-              activeOpacity={0.8}
-              onPress={async () => {
-                try {
-                  await fetch("http://localhost:4000/api/v1/risk/fire-drill", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ targetTier: 2, simulatedDropPercent: 45 }),
-                  });
-                  alert("Tier 2 Deleverage triggered! Spot and short reduced by 20%.");
-                } catch (e) {
-                  alert("Fire drill executed locally.");
-                }
-              }}
-            >
-              <Text style={[styles.fireDrillBtnText, { color: colors.amber }]}>+45% Spike (Tier 2)</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* 1-Tap Unwind Action */}
-        <TouchableOpacity
-          style={styles.unwindBtn}
-          activeOpacity={0.85}
-          onPress={() => {
-            openRiskGuardModal(false);
-            openUnwindModal(true);
-          }}
-        >
-          <Text style={styles.unwindBtnText}>Execute 1-Tap Unwind</Text>
-        </TouchableOpacity>
+        {/* Action Button */}
+        {hasActivePosition ? (
+          <TouchableOpacity
+            style={styles.unwindBtn}
+            activeOpacity={0.85}
+            onPress={() => {
+              openRiskGuardModal(false);
+              openUnwindModal(true);
+            }}
+          >
+            <Text style={styles.unwindBtnText}>Execute 1-Tap Unwind</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.depositCtaBtn}
+            activeOpacity={0.85}
+            onPress={() => {
+              openRiskGuardModal(false);
+              setActiveTab("earn");
+            }}
+          >
+            <Zap size={16} color={colors.textDark} strokeWidth={2.4} />
+            <Text style={styles.depositCtaBtnText}>Open Delta-Neutral Carry</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 60 }} />
       </ScrollView>
@@ -375,64 +392,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
-  unwindBtnText: {
-    color: colors.crimson,
-    fontSize: 13.5,
-    fontWeight: "700",
+  statusBadgeIdle: {
+    backgroundColor: colors.surfaceInput,
   },
-  fireDrillCard: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(131, 110, 249, 0.25)",
-    marginTop: 16,
+  statusDotIdle: {
+    backgroundColor: colors.textTertiary,
   },
-  fireDrillHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
+  statusTextIdle: {
+    color: colors.textSecondary,
   },
-  fireDrillTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(131, 110, 249, 0.12)",
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+  gaugePercentIdle: {
+    color: colors.textSecondary,
+    fontSize: 32,
+  },
+  depositCtaBtn: {
+    backgroundColor: colors.lime,
     borderRadius: radius.pill,
-  },
-  fireDrillTagText: {
-    color: colors.monadViolet,
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  fireDrillRatioText: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  fireDrillDesc: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  fireDrillActions: {
+    height: 50,
     flexDirection: "row",
-    gap: 8,
-  },
-  fireDrillBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: radius.sm,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: space.xs,
+    marginTop: 14,
   },
-  fireDrillBtnText: {
-    fontSize: 11.5,
+  depositCtaBtnText: {
+    color: colors.textDark,
+    fontSize: 14.5,
     fontWeight: "700",
   },
 });

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAppStore } from '../state/store';
+import { useLiveQuote } from '../services/useBackendData';
 import { colors, radius, space } from '../theme';
 import {
   TrendingUp,
@@ -32,6 +33,8 @@ export const PortfolioScreen: React.FC = () => {
     openUnwindModal,
     setActiveTab,
   } = useAppStore();
+
+  const { quote } = useLiveQuote(1000);
 
   const [refreshing, setRefreshing] = useState(false);
   const [isRebalancing, setIsRebalancing] = useState(false);
@@ -68,7 +71,15 @@ export const PortfolioScreen: React.FC = () => {
   const cashUsd = walletBalanceAusd;
 
   const totalNetWorth = spotValueUsd + perpMarginUsd + reserveUsd + cashUsd;
-  const liveApy = hasPosition ? activePosition?.estimatedApr || 21.4 : 21.4;
+
+  // Unified APY matching HomeScreen exactly:
+  const liveAprRate =
+    activePosition?.estimatedApr ??
+    quote?.telemetry?.netEstimatedApr ??
+    quote?.telemetry?.trailingFundingApr ??
+    0;
+  const liveApyText = `${(liveAprRate * 100).toFixed(1)}% Est. APY`;
+
   const netDelta = hasPosition ? activePosition?.netDeltaDollars || 0.0 : 0.0;
   const accruedYield = hasPosition ? activePosition?.accruedFundingEst || 0.0 : 0.0;
 
@@ -105,34 +116,61 @@ export const PortfolioScreen: React.FC = () => {
         <View style={styles.heroTopRow}>
           <Text style={styles.heroLabel}>Total Net Worth</Text>
           <View style={styles.apyBadge}>
-            <View style={styles.apyDot} />
-            <Text style={styles.apyText}>{liveApy.toFixed(1)}% Est. APY</Text>
+            <View style={[styles.apyDot, (!hasPosition && totalNetWorth <= 0) && styles.apyDotIdle]} />
+            <Text style={styles.apyText}>{liveApyText}</Text>
           </View>
         </View>
         <Text style={styles.heroAmount}>
           ${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </Text>
         <Text style={styles.heroCurrency} numberOfLines={1}>
-          Denominated in Agora AUSD · Hedged on Monad Testnet
+          {hasPosition
+            ? 'Denominated in Agora AUSD · Hedged on Monad Testnet'
+            : totalNetWorth > 0
+            ? 'Liquid Agora AUSD · No Active Carry Hedge'
+            : 'Vault Standby · No Assets Deposited'}
         </Text>
 
         {/* Delta Neutral Health Meter */}
         <View style={styles.meterContainer}>
           <View style={styles.meterHeader}>
             <View style={styles.meterTitleRow}>
-              <ShieldCheck size={14} color={colors.lime} />
+              <ShieldCheck
+                size={14}
+                color={hasPosition ? colors.lime : colors.textTertiary}
+              />
               <Text style={styles.meterTitle}>Delta-Neutral Status</Text>
             </View>
-            <Text style={styles.meterStatusText}>
-              {Math.abs(netDelta) < 1.0 ? 'Balanced · 1.00x' : 'Slight Imbalance'}
+            <Text
+              style={[
+                styles.meterStatusText,
+                !hasPosition && styles.meterStatusTextIdle,
+              ]}
+            >
+              {hasPosition
+                ? Math.abs(netDelta) < 1.0
+                  ? 'Balanced · 1.00x'
+                  : 'Slight Imbalance'
+                : totalNetWorth > 0
+                ? 'Idle (Unallocated Cash)'
+                : 'Standby · 0.00x'}
             </Text>
           </View>
           <View style={styles.meterTrack}>
-            <View style={styles.meterFill} />
+            <View
+              style={[
+                styles.meterFill,
+                !hasPosition && { width: '0%' },
+              ]}
+            />
           </View>
           <View style={styles.meterLabels}>
             <Text style={styles.meterSubtext} numberOfLines={1}>
-              Spot Long: ${(spotValueUsd).toFixed(2)} | Perp Short: -${(perpMarginUsd).toFixed(2)} | Net Δ: ${netDelta.toFixed(2)}
+              {hasPosition
+                ? `Spot Long: $${spotValueUsd.toFixed(2)} | Perp Short: -$${perpMarginUsd.toFixed(2)} | Net Δ: $${netDelta.toFixed(2)}`
+                : totalNetWorth > 0
+                ? `Liquid Cash: $${cashUsd.toFixed(2)} | Open carry hedge to begin basis harvesting`
+                : 'No active funds deployed. Claim testnet AUSD to get started.'}
             </Text>
           </View>
         </View>
@@ -144,132 +182,191 @@ export const PortfolioScreen: React.FC = () => {
           <Layers size={16} color={colors.lime} />
           <Text style={styles.sectionTitle}>Venues & Asset Holdings</Text>
         </View>
-        <Text style={styles.venueCount}>4 Allocations</Text>
+        <Text style={styles.venueCount}>
+          {hasPosition
+            ? '4 Allocations'
+            : totalNetWorth > 0
+            ? '1 Allocation (Cash)'
+            : '0 Active Allocations'}
+        </Text>
       </View>
 
-      {/* 1. Kuru Spot MON */}
-      <View style={styles.assetCard}>
-        <View style={styles.assetHeader}>
-          <View style={styles.assetLeft}>
-            <View style={[styles.venueDot, { backgroundColor: colors.kuruOrange }]} />
-            <View>
-              <Text style={styles.assetName}>Kuru Spot MON</Text>
-              <Text style={styles.venueSubtext} numberOfLines={1}>
-                Kuru CLOB · 0xa241...D2D9 · Onchain Spot
+      {!hasPosition && totalNetWorth <= 0 ? (
+        <View style={styles.emptyVaultCard}>
+          <View style={styles.emptyIconBox}>
+            <Wallet size={24} color={colors.lime} strokeWidth={2.2} />
+          </View>
+          <Text style={styles.emptyVaultTitle}>Vault Standby</Text>
+          <Text style={styles.emptyVaultSubtitle}>
+            You have no assets allocated in CounterYield. Claim free testnet AUSD or deposit into the carry vault to begin automated basis harvesting.
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyVaultBtn}
+            activeOpacity={0.85}
+            onPress={() => setActiveTab('earn')}
+          >
+            <Zap size={16} color={colors.textDark} strokeWidth={2.4} />
+            <Text style={styles.emptyVaultBtnText}>Start Earning Basis Yield</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* 1. Kuru Spot MON */}
+          <View style={[styles.assetCard, !hasPosition && styles.assetCardInactive]}>
+            <View style={styles.assetHeader}>
+              <View style={styles.assetLeft}>
+                <View
+                  style={[
+                    styles.venueDot,
+                    {
+                      backgroundColor: hasPosition
+                        ? colors.kuruOrange
+                        : colors.borderSubtle,
+                    },
+                  ]}
+                />
+                <View>
+                  <Text style={styles.assetName}>Kuru Spot MON</Text>
+                  <Text style={styles.venueSubtext} numberOfLines={1}>
+                    Kuru CLOB · 0xa241...D2D9 · Onchain Spot
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.assetRight}>
+                <Text style={styles.assetValue}>
+                  ${spotValueUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+                <Text style={styles.assetQty} numberOfLines={1}>
+                  {hasPosition
+                    ? `${activePosition?.spotQuantity?.toFixed(2) || '0.00'} MON`
+                    : 'Inactive'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.assetMetaRow}>
+              <View style={styles.tagBadge}>
+                <Text style={styles.tagText}>{hasPosition ? 'LONG LEG' : 'IDLE'}</Text>
+              </View>
+              <Text style={styles.assetRoleText} numberOfLines={1}>
+                Acquires base staking yield + physical asset for perp hedge
               </Text>
             </View>
           </View>
-          <View style={styles.assetRight}>
-            <Text style={styles.assetValue}>
-              ${spotValueUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-            <Text style={styles.assetQty} numberOfLines={1}>
-              {hasPosition ? `${activePosition?.spotQuantity?.toFixed(2) || '0.00'} MON` : '0.00 MON'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.assetMetaRow}>
-          <View style={styles.tagBadge}>
-            <Text style={styles.tagText}>LONG LEG</Text>
-          </View>
-          <Text style={styles.assetRoleText} numberOfLines={1}>
-            Acquires base staking yield + physical asset for perp hedge
-          </Text>
-        </View>
-      </View>
 
-      {/* 2. Perpl Short MON-PERP */}
-      <View style={styles.assetCard}>
-        <View style={styles.assetHeader}>
-          <View style={styles.assetLeft}>
-            <View style={[styles.venueDot, { backgroundColor: colors.perplCyan }]} />
-            <View>
-              <Text style={styles.assetName}>Perpl MON-PERP</Text>
-              <Text style={styles.venueSubtext} numberOfLines={1}>
-                Perpl DEX · Market 64 · 1x Short Hedge
+          {/* 2. Perpl Short MON-PERP */}
+          <View style={[styles.assetCard, !hasPosition && styles.assetCardInactive]}>
+            <View style={styles.assetHeader}>
+              <View style={styles.assetLeft}>
+                <View
+                  style={[
+                    styles.venueDot,
+                    {
+                      backgroundColor: hasPosition
+                        ? colors.perplCyan
+                        : colors.borderSubtle,
+                    },
+                  ]}
+                />
+                <View>
+                  <Text style={styles.assetName}>Perpl MON-PERP</Text>
+                  <Text style={styles.venueSubtext} numberOfLines={1}>
+                    Perpl DEX · Market 64 · 1x Short Hedge
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.assetRight}>
+                <Text style={styles.assetValue}>
+                  ${perpMarginUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+                <Text style={styles.assetQty} numberOfLines={1}>
+                  {hasPosition
+                    ? `-${activePosition?.spotQuantity?.toFixed(2) || '0.00'} SHORT`
+                    : 'Inactive'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.assetMetaRow}>
+              <View style={styles.tagBadge}>
+                <Text style={styles.tagText}>{hasPosition ? 'SHORT LEG' : 'IDLE'}</Text>
+              </View>
+              <Text style={styles.assetRoleText} numberOfLines={1}>
+                Harvests basis funding rate while offsetting directional price risk
               </Text>
             </View>
           </View>
-          <View style={styles.assetRight}>
-            <Text style={styles.assetValue}>
-              ${perpMarginUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-            <Text style={styles.assetQty} numberOfLines={1}>
-              {hasPosition ? `-${activePosition?.spotQuantity?.toFixed(2) || '0.00'} SHORT` : '0.00 SHORT'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.assetMetaRow}>
-          <View style={styles.tagBadge}>
-            <Text style={styles.tagText}>SHORT LEG</Text>
-          </View>
-          <Text style={styles.assetRoleText} numberOfLines={1}>
-            Harvests basis funding rate while offsetting directional price risk
-          </Text>
-        </View>
-      </View>
 
-      {/* 3. 10% Reserve Buffer */}
-      <View style={styles.assetCard}>
-        <View style={styles.assetHeader}>
-          <View style={styles.assetLeft}>
-            <View style={[styles.venueDot, { backgroundColor: colors.agoraGreen }]} />
-            <View>
-              <Text style={styles.assetName}>Liquidation Reserve (10%)</Text>
-              <Text style={styles.venueSubtext} numberOfLines={1}>
-                CarryLedger Vault · Defends margin spikes
+          {/* 3. 10% Reserve Buffer */}
+          <View style={[styles.assetCard, !hasPosition && styles.assetCardInactive]}>
+            <View style={styles.assetHeader}>
+              <View style={styles.assetLeft}>
+                <View
+                  style={[
+                    styles.venueDot,
+                    {
+                      backgroundColor: hasPosition
+                        ? colors.agoraGreen
+                        : colors.borderSubtle,
+                    },
+                  ]}
+                />
+                <View>
+                  <Text style={styles.assetName}>Liquidation Reserve (10%)</Text>
+                  <Text style={styles.venueSubtext} numberOfLines={1}>
+                    CarryLedger Vault · Defends margin spikes
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.assetRight}>
+                <Text style={styles.assetValue}>
+                  ${reserveUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+                <Text style={styles.assetQty} numberOfLines={1}>
+                  {reserveUsd > 0 ? 'Buffer Active' : 'Idle'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.assetMetaRow}>
+              <View style={styles.tagBadge}>
+                <Text style={styles.tagText}>{hasPosition ? 'RISK GUARD' : 'IDLE'}</Text>
+              </View>
+              <Text style={styles.assetRoleText} numberOfLines={1}>
+                Automated collateral buffer protecting position against flash drops
               </Text>
             </View>
           </View>
-          <View style={styles.assetRight}>
-            <Text style={styles.assetValue}>
-              ${reserveUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-            <Text style={styles.assetQty} numberOfLines={1}>
-              {reserveUsd > 0 ? 'Buffer Active' : 'Idle'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.assetMetaRow}>
-          <View style={styles.tagBadge}>
-            <Text style={styles.tagText}>RISK GUARD</Text>
-          </View>
-          <Text style={styles.assetRoleText} numberOfLines={1}>
-            Automated collateral buffer protecting position against flash drops
-          </Text>
-        </View>
-      </View>
 
-      {/* 4. Cash / AUSD Wallet */}
-      <View style={styles.assetCard}>
-        <View style={styles.assetHeader}>
-          <View style={styles.assetLeft}>
-            <View style={[styles.venueDot, { backgroundColor: colors.monadViolet }]} />
-            <View>
-              <Text style={styles.assetName}>Available Cash</Text>
-              <Text style={styles.venueSubtext} numberOfLines={1}>
-                Agora AUSD · Monad Testnet Wallet
+          {/* 4. Cash / AUSD Wallet */}
+          <View style={styles.assetCard}>
+            <View style={styles.assetHeader}>
+              <View style={styles.assetLeft}>
+                <View style={[styles.venueDot, { backgroundColor: colors.monadViolet }]} />
+                <View>
+                  <Text style={styles.assetName}>Available Cash</Text>
+                  <Text style={styles.venueSubtext} numberOfLines={1}>
+                    Agora AUSD · Monad Testnet Wallet
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.assetRight}>
+                <Text style={styles.assetValue}>
+                  ${cashUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+                <Text style={styles.assetQty} numberOfLines={1}>
+                  {cashUsd > 0 ? 'Liquid Cash' : '0.00 AUSD'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.assetMetaRow}>
+              <View style={styles.tagBadge}>
+                <Text style={styles.tagText}>UNALLOCATED</Text>
+              </View>
+              <Text style={styles.assetRoleText} numberOfLines={1}>
+                Liquid capital available for 1-tap deployment or instant withdrawal
               </Text>
             </View>
           </View>
-          <View style={styles.assetRight}>
-            <Text style={styles.assetValue}>
-              ${cashUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-            <Text style={styles.assetQty} numberOfLines={1}>
-              Liquid Cash
-            </Text>
-          </View>
-        </View>
-        <View style={styles.assetMetaRow}>
-          <View style={styles.tagBadge}>
-            <Text style={styles.tagText}>UNALLOCATED</Text>
-          </View>
-          <Text style={styles.assetRoleText} numberOfLines={1}>
-            Liquid capital available for 1-tap deployment or instant withdrawal
-          </Text>
-        </View>
-      </View>
+        </>
+      )}
 
       {/* Rebalance Toast / Status */}
       {rebalanceMessage && (
@@ -629,5 +726,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.crimson,
+  },
+  apyDotIdle: {
+    backgroundColor: colors.textTertiary,
+  },
+  meterStatusTextIdle: {
+    color: colors.textSecondary,
+  },
+  assetCardInactive: {
+    opacity: 0.65,
+  },
+  emptyVaultCard: {
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.xl,
+    padding: space.xl,
+    alignItems: 'center',
+    marginBottom: space.lg,
+  },
+  emptyIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.limeSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.md,
+  },
+  emptyVaultTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  emptyVaultSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: space.lg,
+    paddingHorizontal: space.sm,
+  },
+  emptyVaultBtn: {
+    backgroundColor: colors.lime,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 22,
+    borderRadius: radius.pill,
+  },
+  emptyVaultBtnText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: colors.textDark,
   },
 });

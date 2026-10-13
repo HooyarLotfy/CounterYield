@@ -230,7 +230,7 @@ export const WelcomeScreen: React.FC = () => {
               </View>
 
               {/* Step 1 Visual Container */}
-              <View style={styles.heroImageContainer}>
+              <View style={styles.heroImageContainerStep1}>
                 <Image
                   source={require("../../assets/onboarding/step1.jpg")}
                   style={styles.heroImage}
@@ -296,12 +296,7 @@ export const WelcomeScreen: React.FC = () => {
                     <Layers size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
-                    <View style={styles.badgeRow}>
-                      <Text style={styles.cardTitle}>CarryLedger Smart Contract</Text>
-                      <View style={styles.venueBadge}>
-                        <Text style={styles.venueBadgeText}>Non-Custodial</Text>
-                      </View>
-                    </View>
+                    <Text style={styles.cardTitle}>CarryLedger Smart Contract</Text>
                     <Text style={styles.cardBody} numberOfLines={1}>
                       Non-custodial ledger. Records every hedge.
                     </Text>
@@ -646,6 +641,17 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     backgroundColor: colors.surface,
     marginVertical: space.md,
+  },
+  heroImageContainerStep1: {
+    width: "100%",
+    height: 140,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.surface,
+    marginTop: space.xs,
+    marginBottom: space.xs,
   },
   heroImage: {
     width: "100%",
