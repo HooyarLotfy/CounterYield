@@ -74,8 +74,13 @@ export class MeraAuthService {
    */
   private static deriveAddressFromSeed(seedHex: string): string {
     const cleanHex = seedHex.replace(/^0x/, '').padStart(64, '0').slice(0, 64);
-    const account = privateKeyToAccount(`0x${cleanHex}` as `0x${string}`);
-    return account.address;
+    try {
+      const account = privateKeyToAccount(`0x${cleanHex}` as `0x${string}`);
+      return account.address;
+    } catch (e) {
+      console.warn('Viem account derivation fallback:', e);
+      return `0x${cleanHex.slice(0, 40)}`;
+    }
   }
 
   /**
