@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, StatusBar, Platform } from "react-native";
+import { View, Text, StyleSheet, StatusBar, Platform, ScrollView } from "react-native";
 import { useAppStore } from "./src/state/store";
 import { WelcomeScreen } from "./src/screens/WelcomeScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
@@ -11,6 +11,43 @@ import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { BottomTabBar } from "./src/components/BottomTabBar";
 import { UnwindModal } from "./src/components/UnwindModal";
 import { colors } from "./src/theme";
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("ErrorBoundary caught error:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <ScrollView style={{ flex: 1, backgroundColor: colors.bg, padding: 24 }}>
+          <Text style={{ color: colors.lime, fontSize: 18, fontWeight: "bold", marginBottom: 8, marginTop: 40 }}>
+            CounterYield Render Error
+          </Text>
+          <Text style={{ color: colors.crimson, fontSize: 14, marginBottom: 16 }}>
+            {this.state.error?.message || "Unknown rendering exception"}
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, fontFamily: Platform.OS === "web" ? "monospace" : undefined }}>
+            {this.state.error?.stack || ""}
+          </Text>
+        </ScrollView>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const { isAuthenticated, isRiskGuardModalOpen, activeTab } = useAppStore();
@@ -37,20 +74,22 @@ export default function App() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <View style={styles.appContainer}>
-        {!isAuthenticated ? (
-          <WelcomeScreen />
-        ) : (
-          <>
-            {renderActiveScreen()}
-            {!isRiskGuardModalOpen && <BottomTabBar />}
-            <UnwindModal />
-          </>
-        )}
+    <ErrorBoundary>
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+        <View style={styles.appContainer}>
+          {!isAuthenticated ? (
+            <WelcomeScreen />
+          ) : (
+            <>
+              {renderActiveScreen()}
+              {!isRiskGuardModalOpen && <BottomTabBar />}
+              <UnwindModal />
+            </>
+          )}
+        </View>
       </View>
-    </View>
+    </ErrorBoundary>
   );
 }
 
