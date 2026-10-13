@@ -4,9 +4,7 @@
 
 # Update 2: Automated 3-Tier Risk Guard and Deployed On-Chain CarryLedger
 
-**Autonomous multi-tier margin protection engine paired with an audited on-chain proof ledger on Monad testnet.**
-
-<br />
+<p><strong>Autonomous multi-tier margin protection engine paired with an audited on-chain proof ledger on Monad testnet.</strong></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Milestone-Update_02-1F1F1F?style=for-the-badge" alt="Update 02" />
@@ -63,16 +61,6 @@ flowchart TD
     S1 -.-> Log["CarryLedger Proof Event"]
     S2 -.-> Log
     S3 -.-> Log
-
-    classDef default fill:#1F1F1F,stroke:rgba(255,255,255,0.15),stroke-width:1px,color:#FFFFFF;
-    classDef ok fill:#1F1F1F,stroke:#9FE825,stroke-width:2px,color:#FFFFFF;
-    classDef warn fill:#1F1F1F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
-    classDef alert fill:#1F1F1F,stroke:#FF5722,stroke-width:2px,color:#FFFFFF;
-    classDef crit fill:#1F1F1F,stroke:#FF5F52,stroke-width:2px,color:#FFFFFF;
-    class S0 ok;
-    class S1 warn;
-    class S2 alert;
-    class S3 crit;
 ```
 
 ### Defense Tiers in Detail

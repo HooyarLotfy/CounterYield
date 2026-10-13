@@ -2,11 +2,8 @@
 
 # CounterYield
 
-**One-Tap Dollar Yield on Monad Testnet**
-
-Earn funding fees paid by crypto traders without betting on market direction.
-
-<br />
+<p><strong>One-Tap Dollar Yield on Monad Testnet</strong></p>
+<p>Earn funding fees paid by crypto traders without betting on market direction.</p>
 
 <p align="center">
   <a href="https://testnet.monadscan.com"><img src="https://img.shields.io/badge/Monad_Testnet-10143-836EF9?style=for-the-badge&logoColor=white" alt="Monad Testnet" /></a>
@@ -16,7 +13,16 @@ Earn funding fees paid by crypto traders without betting on market direction.
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-gray?style=for-the-badge" alt="MIT License" /></a>
 </p>
 
-[What It Does](#what-it-does) • [How It Works](#how-it-works) • [Risk Guard](#how-the-risk-guard-protects-you) • [Security](#how-login-and-wallet-security-work) • [Contracts](#monad-testnet-contracts) • [Quick Start](#running-the-project-locally) • [Updates](updates/) • [Design System](DESIGN.md)
+<p align="center">
+  <a href="#what-it-does">What It Does</a> &bull;
+  <a href="#how-it-works">How It Works</a> &bull;
+  <a href="#how-the-risk-guard-protects-you">Risk Guard</a> &bull;
+  <a href="#how-login-and-wallet-security-work">Security</a> &bull;
+  <a href="#monad-testnet-contracts">Contracts</a> &bull;
+  <a href="#running-the-project-locally">Quick Start</a> &bull;
+  <a href="#project-updates-for-hackathon-review">Updates</a> &bull;
+  <a href="DESIGN.md">Design System</a>
+</p>
 
 </div>
 
@@ -46,19 +52,13 @@ So the two positions roughly cancel each other out, meaning you're mainly trying
 
 ```mermaid
 flowchart TD
-    D["Deposit: $1,000 AUSD"] --> R["$100 (10%)<br/><b>Safety Reserve</b><br/>Cash Protection"]
-    D --> S["$450 (45%)<br/><b>Spot Buy MON</b><br/>Kuru CLOB Router"]
-    D --> H["$450 (45%)<br/><b>1x Short MON</b><br/>Perpl Market 64"]
-    S -.-> C["Price Movements Cancel Out<br/>Zero Directional Bet"]
+    D["Deposit: $1,000 AUSD"] --> R["$100 (10%)<br/>Safety Reserve<br/>(Cash Protection)"]
+    D --> S["$450 (45%)<br/>Spot Buy MON<br/>(Kuru CLOB Router)"]
+    D --> H["$450 (45%)<br/>1x Short MON<br/>(Perpl Market 64)"]
+    S -.-> C["Price Movements Cancel Out<br/>(Zero Directional Bet)"]
     H -.-> C
-    C ==> Y["Collect Funding Fees<br/>Current APY: ~18.4%"]
-    R -.-> P["Protects Short Leg<br/>Auto Top-Up if Price Spikes"]
-
-    classDef default fill:#1F1F1F,stroke:rgba(255,255,255,0.15),stroke-width:1px,color:#FFFFFF;
-    classDef highlight fill:#1F1F1F,stroke:#9FE825,stroke-width:2px,color:#FFFFFF;
-    classDef monad fill:#1F1F1F,stroke:#836EF9,stroke-width:2px,color:#FFFFFF;
-    class D,Y highlight;
-    class S,H monad;
+    C ==> Y["Collect Funding Fees<br/>(Current APY: ~18.4%)"]
+    R -.-> P["Protects Short Leg<br/>(Auto Top-Up if Price Spikes)"]
 ```
 
 ```text
@@ -95,16 +95,6 @@ flowchart TD
     M -->|"40% to 60%"| T1["Tier 1: Top-Up<br/>Move cash from 10% safety reserve into short"]
     M -->|"25% to 40%"| T2["Tier 2: Trim Both Sides<br/>Sell 20% spot MON and close 20% short"]
     M -->|"< 25% (2 blocks)"| T3["Tier 3: Emergency Exit<br/>Close both positions to 100% AUSD cash"]
-
-    classDef default fill:#1F1F1F,stroke:rgba(255,255,255,0.15),stroke-width:1px,color:#FFFFFF;
-    classDef ok fill:#1F1F1F,stroke:#9FE825,stroke-width:2px,color:#FFFFFF;
-    classDef warn fill:#1F1F1F,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
-    classDef alert fill:#1F1F1F,stroke:#FF5722,stroke-width:2px,color:#FFFFFF;
-    classDef crit fill:#1F1F1F,stroke:#FF5F52,stroke-width:2px,color:#FFFFFF;
-    class N ok;
-    class T1 warn;
-    class T2 alert;
-    class T3 crit;
 ```
 
 | Defense Tier | Margin Level | Automatic Action |
