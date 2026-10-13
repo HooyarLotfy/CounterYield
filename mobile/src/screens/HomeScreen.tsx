@@ -146,7 +146,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.deltaChip}>
               <View style={[styles.deltaDot, hasPosition ? styles.deltaDotActive : styles.deltaDotIdle]} />
               <Text style={styles.deltaText}>
-                {hasPosition ? `Δ = $${activePosition.netDeltaDollars.toFixed(2)} (Neutral)` : "Zero Delta"}
+                {hasPosition ? `Δ = $${Number(activePosition?.netDeltaDollars ?? 0).toFixed(2)} (Neutral)` : "Zero Delta"}
               </Text>
             </View>
           </View>
@@ -258,10 +258,10 @@ export const HomeScreen: React.FC = () => {
                 </View>
                 <View style={styles.assetValueGroup}>
                   <Text style={styles.assetDollarValue}>
-                    ${(activePosition.spotQuantity * activePosition.spotPrice).toFixed(2)}
+                    ${(Number(activePosition.spotQuantity || 0) * Number(activePosition.spotPrice || 0)).toFixed(2)}
                   </Text>
                   <Text style={styles.assetCryptoAmount}>
-                    {activePosition.spotQuantity.toFixed(1)} MON
+                    {Number(activePosition.spotQuantity || 0).toFixed(1)} MON
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -283,10 +283,10 @@ export const HomeScreen: React.FC = () => {
                 </View>
                 <View style={styles.assetValueGroup}>
                   <Text style={styles.assetDollarValue}>
-                    ${(activePosition.perpQuantity * activePosition.perpMarkPrice).toFixed(2)}
+                    ${(Number(activePosition.perpQuantity || 0) * Number(activePosition.perpMarkPrice || 0)).toFixed(2)}
                   </Text>
                   <Text style={styles.assetCryptoAmount}>
-                    -{activePosition.perpQuantity.toFixed(1)} MON
+                    -{Number(activePosition.perpQuantity || 0).toFixed(1)} MON
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -301,12 +301,12 @@ export const HomeScreen: React.FC = () => {
                 <View style={styles.assetMeta}>
                   <Text style={styles.assetName}>Reserve Buffer (10%)</Text>
                   <Text style={styles.assetVenue}>
-                    Margin: {(activePosition.marginRatio * 100).toFixed(0)}% · Tier Normal
+                    Margin: {(Number(activePosition.marginRatio || 0) * 100).toFixed(0)}% · Tier Normal
                   </Text>
                 </View>
                 <View style={styles.assetValueGroup}>
                   <Text style={[styles.assetDollarValue, { color: colors.lime }]}>
-                    ${activePosition.reserveBuffer.toFixed(2)}
+                    ${Number(activePosition.reserveBuffer || 0).toFixed(2)}
                   </Text>
                   <Text style={styles.assetCryptoAmount}>Liquid AUSD</Text>
                 </View>

@@ -238,7 +238,7 @@ export const PortfolioScreen: React.FC = () => {
                 </Text>
                 <Text style={styles.assetQty} numberOfLines={1}>
                   {hasPosition
-                    ? `${activePosition?.spotQuantity?.toFixed(2) || '0.00'} MON`
+                    ? `${Number(activePosition?.spotQuantity ?? 0).toFixed(2)} MON`
                     : 'Inactive'}
                 </Text>
               </View>
@@ -280,7 +280,7 @@ export const PortfolioScreen: React.FC = () => {
                 </Text>
                 <Text style={styles.assetQty} numberOfLines={1}>
                   {hasPosition
-                    ? `-${activePosition?.spotQuantity?.toFixed(2) || '0.00'} SHORT`
+                    ? `-${Number(activePosition?.spotQuantity ?? 0).toFixed(2)} SHORT`
                     : 'Inactive'}
                 </Text>
               </View>
