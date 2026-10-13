@@ -99,10 +99,8 @@ export const HomeScreen: React.FC = () => {
             style={styles.faucetBanner}
             activeOpacity={0.85}
             disabled={isClaimingFaucet}
-            onPress={async () => {
-              setIsClaimingFaucet(true);
-              await claimFaucet();
-              setIsClaimingFaucet(false);
+            onPress={() => {
+              setActiveTab("earn");
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>

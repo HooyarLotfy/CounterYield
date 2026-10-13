@@ -61,12 +61,16 @@ export const PortfolioScreen: React.FC = () => {
 
   // Portfolio calculations
   const hasPosition = Boolean(activePosition && activePosition.depositAmount > 0);
-  const spotValueUsd = hasPosition
-    ? (activePosition?.spotQuantity || 0) * (activePosition?.spotPrice || 2.0)
-    : 0;
-  const perpMarginUsd = hasPosition
+  const spotCapitalAllocated = hasPosition
     ? ((activePosition?.depositAmount || 0) - (activePosition?.reserveBuffer || 0)) / 2
     : 0;
+  // Use committed spot capital or accurate price multiplication (prevent 2-decimal truncation error)
+  const spotValueUsd = hasPosition
+    ? (activePosition?.spotPrice && activePosition.spotPrice > 0.05
+        ? (activePosition.spotQuantity || 0) * activePosition.spotPrice
+        : spotCapitalAllocated)
+    : 0;
+  const perpMarginUsd = spotCapitalAllocated;
   const reserveUsd = hasPosition ? activePosition?.reserveBuffer || 0 : 0;
   const cashUsd = walletBalanceAusd;
 
@@ -167,9 +171,9 @@ export const PortfolioScreen: React.FC = () => {
           <View style={styles.meterLabels}>
             <Text style={styles.meterSubtext} numberOfLines={1}>
               {hasPosition
-                ? `Spot Long: $${spotValueUsd.toFixed(2)} | Perp Short: -$${perpMarginUsd.toFixed(2)} | Net Δ: $${netDelta.toFixed(2)}`
+                ? `Spot: $${spotValueUsd.toFixed(0)} · Perp: -$${perpMarginUsd.toFixed(0)} · Net Δ: $${netDelta.toFixed(2)}`
                 : totalNetWorth > 0
-                ? `Liquid Cash: $${cashUsd.toFixed(2)} | Open carry hedge to begin basis harvesting`
+                ? `Liquid: $${cashUsd.toFixed(2)} · Open hedge to begin`
                 : 'No active funds deployed. Claim testnet AUSD to get started.'}
             </Text>
           </View>
@@ -225,10 +229,10 @@ export const PortfolioScreen: React.FC = () => {
                     },
                   ]}
                 />
-                <View>
+                <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Kuru Spot MON</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>
-                    Kuru CLOB · 0xa241...D2D9 · Onchain Spot
+                    Kuru CLOB · Spot Long
                   </Text>
                 </View>
               </View>
@@ -238,7 +242,7 @@ export const PortfolioScreen: React.FC = () => {
                 </Text>
                 <Text style={styles.assetQty} numberOfLines={1}>
                   {hasPosition
-                    ? `${Number(activePosition?.spotQuantity ?? 0).toFixed(2)} MON`
+                    ? `${Number(activePosition?.spotQuantity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MON`
                     : 'Inactive'}
                 </Text>
               </View>
@@ -248,7 +252,7 @@ export const PortfolioScreen: React.FC = () => {
                 <Text style={styles.tagText}>{hasPosition ? 'LONG LEG' : 'IDLE'}</Text>
               </View>
               <Text style={styles.assetRoleText} numberOfLines={1}>
-                Acquires base staking yield + physical asset for perp hedge
+                Physical spot backing perp short
               </Text>
             </View>
           </View>
@@ -267,10 +271,10 @@ export const PortfolioScreen: React.FC = () => {
                     },
                   ]}
                 />
-                <View>
+                <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Perpl MON-PERP</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>
-                    Perpl DEX · Market 64 · 1x Short Hedge
+                    Perpl DEX · 1x Short
                   </Text>
                 </View>
               </View>
@@ -280,7 +284,7 @@ export const PortfolioScreen: React.FC = () => {
                 </Text>
                 <Text style={styles.assetQty} numberOfLines={1}>
                   {hasPosition
-                    ? `-${Number(activePosition?.spotQuantity ?? 0).toFixed(2)} SHORT`
+                    ? `-${Number(activePosition?.spotQuantity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SHORT`
                     : 'Inactive'}
                 </Text>
               </View>
@@ -290,7 +294,7 @@ export const PortfolioScreen: React.FC = () => {
                 <Text style={styles.tagText}>{hasPosition ? 'SHORT LEG' : 'IDLE'}</Text>
               </View>
               <Text style={styles.assetRoleText} numberOfLines={1}>
-                Harvests basis funding rate while offsetting directional price risk
+                Funding rate arbitrage hedge
               </Text>
             </View>
           </View>
@@ -309,10 +313,10 @@ export const PortfolioScreen: React.FC = () => {
                     },
                   ]}
                 />
-                <View>
+                <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Liquidation Reserve (10%)</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>
-                    CarryLedger Vault · Defends margin spikes
+                    CarryLedger · 10% Buffer
                   </Text>
                 </View>
               </View>
@@ -330,7 +334,7 @@ export const PortfolioScreen: React.FC = () => {
                 <Text style={styles.tagText}>{hasPosition ? 'RISK GUARD' : 'IDLE'}</Text>
               </View>
               <Text style={styles.assetRoleText} numberOfLines={1}>
-                Automated collateral buffer protecting position against flash drops
+                Automated liquidation defense
               </Text>
             </View>
           </View>
@@ -340,10 +344,10 @@ export const PortfolioScreen: React.FC = () => {
             <View style={styles.assetHeader}>
               <View style={styles.assetLeft}>
                 <View style={[styles.venueDot, { backgroundColor: colors.monadViolet }]} />
-                <View>
+                <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Available Cash</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>
-                    Agora AUSD · Monad Testnet Wallet
+                    Agora AUSD · Liquid Wallet
                   </Text>
                 </View>
               </View>
@@ -361,7 +365,7 @@ export const PortfolioScreen: React.FC = () => {
                 <Text style={styles.tagText}>UNALLOCATED</Text>
               </View>
               <Text style={styles.assetRoleText} numberOfLines={1}>
-                Liquid capital available for 1-tap deployment or instant withdrawal
+                Liquid capital ready to deploy
               </Text>
             </View>
           </View>
@@ -608,6 +612,10 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
+  assetNameCol: {
+    flex: 1,
+    marginRight: space.sm,
+  },
   assetName: {
     fontSize: 15,
     fontWeight: '600',
@@ -620,6 +628,7 @@ const styles = StyleSheet.create({
   },
   assetRight: {
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   assetValue: {
     fontSize: 16,

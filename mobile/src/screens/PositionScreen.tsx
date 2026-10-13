@@ -39,12 +39,9 @@ export const PositionScreen: React.FC = () => {
   let liqPriceFormatted = "N/A";
 
   if (hasActivePosition && position) {
-    const entryPrice =
-      parseFloat(position.perpLeg?.entryPrice || "0") || (position.spotPrice || 0);
-    const markPrice =
-      position.perpMarkPrice > 0 ? position.perpMarkPrice : entryPrice;
-    const qty =
-      position.perpQuantity || parseFloat(position.perpLeg?.quantity || "0") || 0;
+    const entryPrice = position.perpMarkPrice || position.spotPrice || 0;
+    const markPrice = position.perpMarkPrice > 0 ? position.perpMarkPrice : entryPrice;
+    const qty = position.perpQuantity || position.spotQuantity || 0;
     const perpMargin =
       ((position.depositAmount || 0) - (position.reserveBuffer || 0)) / 2;
     const reserveBuffer = position.reserveBuffer || 0;
@@ -391,6 +388,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 12,
+  },
+  unwindBtnText: {
+    color: colors.crimson,
+    fontSize: 14,
+    fontWeight: "700",
   },
   statusBadgeIdle: {
     backgroundColor: colors.surfaceInput,

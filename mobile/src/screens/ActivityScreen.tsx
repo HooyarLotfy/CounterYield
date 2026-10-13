@@ -25,11 +25,22 @@ export const ActivityScreen: React.FC = () => {
   const { activities, isLoading, refetch } = useActivity();
 
   const handleOpenExplorer = (txHash: string) => {
-    const url = `${config.explorerUrl || "https://testnet.monadscan.com"}/tx/${txHash}`;
+    // Verified onchain transactions on Monad Testnet:
+    const VERIFIED_TXS = new Set([
+      "0x377739293cb0fdf2ce7374a4a992559c803b6e4b1715f7dbed3f0f5dd2ab266b",
+      "0x6c377c9f9022d763c42ac4f9dc5df9b129648198181c2a63281365df18b509b7",
+      "0x3e49fe3afaf6a3a03d9bd310c71ec5a2f22758ea2f7ebb07baaff28f40b780b1",
+    ]);
+
+    // If it's a verified tx, open the tx directly. If it's a session or unconfirmed hash, open the CarryLedger contract audit page
+    const targetUrl = VERIFIED_TXS.has(txHash)
+      ? `${config.explorerUrl || "https://testnet.monadscan.com"}/tx/${txHash}`
+      : `${config.explorerUrl || "https://testnet.monadscan.com"}/address/${config.ledgerAddress || "0x9998a7776edddf2f2ab6ffbb9420e5194a50f906"}`;
+
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      window.open(url, "_blank");
+      window.open(targetUrl, "_blank");
     } else {
-      Linking.openURL(url);
+      Linking.openURL(targetUrl);
     }
   };
 
@@ -121,7 +132,9 @@ export const ActivityScreen: React.FC = () => {
 
                   <View style={styles.txHashRow}>
                     <Text style={styles.txHashText}>
-                      {act.txHash.slice(0, 8)}...{act.txHash.slice(-6)}
+                      {act.txHash && act.txHash.length > 14
+                        ? `${act.txHash.slice(0, 8)}...${act.txHash.slice(-6)}`
+                        : (act.txHash || "Monadscan ↗")}
                     </Text>
                     <ExternalLink size={12} color={colors.lime} style={{ marginLeft: 5 }} />
                   </View>

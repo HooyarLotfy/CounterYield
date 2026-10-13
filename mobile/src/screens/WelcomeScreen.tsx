@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   scanReticle: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   reticleTopLeft: {
     position: "absolute",

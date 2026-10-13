@@ -175,13 +175,13 @@ export class StrategyEngine {
       spotLeg: {
         txHash: spotTxHash || ledgerTxHash || undefined,
         quantity: sizing.baseQuantity.toString(),
-        entryPrice: markPrice.toFixed(2),
+        entryPrice: markPrice.toString(),
         currentValueUsd: sizing.spotCapital.toFixed(2),
       },
       perpLeg: {
         orderId: `perpl-${Date.now()}`,
         quantity: sizing.baseQuantity.toString(),
-        entryPrice: markPrice.toFixed(2),
+        entryPrice: markPrice.toString(),
         currentValueUsd: sizing.spotCapital.toFixed(2),
       },
       perpMarginRemaining: sizing.perpMargin.toFixed(2),
