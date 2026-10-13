@@ -19,8 +19,10 @@
   <a href="#security">Security</a> &bull;
   <a href="#contracts">Contracts</a> &bull;
   <a href="#quick-start">Quick Start</a> &bull;
-  <a href="#updates">Updates</a>
+  <a href="#updates">Updates</a> &bull;
+  <a href="#mentor-notes--whats-next">Mentor Notes</a>
 </p>
+
 
 </div>
 
@@ -108,6 +110,17 @@ npm --prefix mobile start
 - [Update 1: Dual-Leg Execution Engine](updates/01-dual-leg-execution-engine.md) — Atomic Kuru spot buy + Perpl 1x short routing.
 - [Update 2: Automated Risk Guard](updates/02-automated-risk-guard-and-carryledger.md) — 3-tier margin defense and deployed `CarryLedger.sol`.
 - [Update 3: Seedless Biometric Mobile Client](updates/03-seedless-biometric-mobile-client.md) — WebAuthn PRF auth with live Monad telemetry.
+
+---
+
+## Mentor Notes & What's Next
+
+During the hackathon, mentors stress-tested our core assumptions. Here is what they flagged and how we handle it:
+
+- **Volatility spikes & margin calls** (gvan, Perpl): If MON pumps hard, the short leg needs margin fast. Our engine checks health every block and auto-sells spot MON on Kuru to fund Perpl collateral before liquidation hits.
+- **Negative funding rate drag** (gvan, Perpl): If funding drops below zero or fails to cover exchange fees, the circuit breaker halts new buys and unwinds open legs into bids.
+- **Sub-500ms query speed** (Denham, Envio): Pure RPC calls are too slow for real-time mobile UX on high-throughput chains. We stream live data over WebSockets for instant UI response and let Envio HyperIndex index historical events in the background.
+- **shMON liquid staking yield** (Swaraj): Instead of holding plain MON on spot, buying FastLane's shMON stacks base staking rewards on top of funding rate payouts, pushing delta-neutral yield past 20%. Added to our post-hackathon roadmap.
 
 ---
 
