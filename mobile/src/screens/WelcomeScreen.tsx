@@ -31,7 +31,7 @@ import {
 } from "lucide-react-native";
 
 export const WelcomeScreen: React.FC = () => {
-  const { authenticate, loadDemoTestingPreset } = useAppStore();
+  const { authenticate } = useAppStore();
 
   // 3-Step Educational Onboarding:
   // Step 1: How the System Works (Delta-Neutral Carry)

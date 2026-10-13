@@ -49,10 +49,10 @@ export const StartEarningScreen: React.FC = () => {
     : "0.0";
 
   const handleStartEarning = async () => {
-    if (numericDeposit <= 0) return;
+    if (numericDeposit <= 0 || !userAddress) return;
 
     await enterStrategy({
-      ownerAddress: userAddress || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+      ownerAddress: userAddress,
       depositAmount: numericDeposit,
       leverage: 1,
       maxSlippageBps: 20,
@@ -219,7 +219,7 @@ export const StartEarningScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.submitBtn}
           activeOpacity={0.85}
-          disabled={isSubmitting || numericDeposit <= 0}
+          disabled={isSubmitting || numericDeposit <= 0 || !userAddress}
           onPress={handleStartEarning}
         >
           {isSubmitting ? (
@@ -227,7 +227,9 @@ export const StartEarningScreen: React.FC = () => {
           ) : (
             <>
               <Zap size={18} color={colors.textDark} strokeWidth={2.4} />
-              <Text style={styles.submitBtnText}>1-Tap Open Hedge Position</Text>
+              <Text style={styles.submitBtnText}>
+                {!userAddress ? "Unlock Vault First" : "1-Tap Open Hedge Position"}
+              </Text>
             </>
           )}
         </TouchableOpacity>

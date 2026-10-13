@@ -58,3 +58,7 @@ export const backendApi = {
 
 /** WebSocket telemetry URL for live position streaming. */
 export const telemetryUrl = () => config.apiUrl.replace(/^http/, 'ws') + '/ws/telemetry';
+
+/** WebSocket market feed URL for live orderbook & Perpl funding streaming. */
+export const marketWsUrl = () => config.apiUrl.replace(/^http/, 'ws') + '/ws/market';
+

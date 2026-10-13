@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { backendApi } from "../../services/backendApi";
-import type { Book, BookLevel } from "../../services/types";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { backendApi, marketWsUrl } from "../../services/backendApi";
+import type { BookLevel } from "../../services/types";
 
 export interface FormattedBook {
   bids: (BookLevel & { total: number })[];
@@ -15,11 +15,13 @@ export function useKuruBook(pollingIntervalMs: number = 2000) {
   const [bookData, setBookData] = useState<FormattedBook>({
     bids: [],
     asks: [],
-    mid: 10.0,
+    mid: 0.0,
     spreadBps: 0,
     isLoading: true,
     error: null,
   });
+
+  const wsRef = useRef<WebSocket | null>(null);
 
   const fetchBook = useCallback(async () => {
     try {
@@ -44,9 +46,53 @@ export function useKuruBook(pollingIntervalMs: number = 2000) {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    let ws: WebSocket | null = null;
+
+    try {
+      const url = marketWsUrl();
+      ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        if (!isMounted) return;
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "MARKET_TICK" && payload.book) {
+            const b = payload.book;
+            setBookData({
+              bids: b.bids.map((lvl: any) => ({ ...lvl, total: lvl.price * lvl.size })),
+              asks: b.asks.map((lvl: any) => ({ ...lvl, total: lvl.price * lvl.size })),
+              mid: b.mid,
+              spreadBps: b.spreadBps,
+              isLoading: false,
+              error: null,
+            });
+          }
+        } catch {
+          // ignore parsing error
+        }
+      };
+
+      ws.onerror = () => {
+        // Fallback to polling
+        fetchBook();
+      };
+    } catch {
+      fetchBook();
+    }
+
+    // Always keep polling as resilient fallback
     fetchBook();
     const interval = setInterval(fetchBook, pollingIntervalMs);
-    return () => clearInterval(interval);
+
+    return () => {
+      isMounted = false;
+      if (ws) {
+        ws.close();
+      }
+      clearInterval(interval);
+    };
   }, [fetchBook, pollingIntervalMs]);
 
   return {

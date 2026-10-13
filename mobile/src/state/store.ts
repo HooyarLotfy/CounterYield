@@ -45,7 +45,6 @@ interface AppStoreState {
   fetchLiveBalance: () => Promise<void>;
   setWsConnected: (connected: boolean) => void;
   applyTelemetryUpdate: (update: Partial<PositionState>) => void;
-  loadDemoTestingPreset: () => void;
 }
 
 /**
@@ -54,8 +53,8 @@ interface AppStoreState {
  */
 async function fetchAusdBalance(address: string): Promise<number> {
   const AUSD_CONTRACT = config.ausdAddress; // Verified Agora AUSD on Monad Testnet
-  // ERC-20 balanceOf(address) selector = 0x70a08231
-  const data = '0x70a08231000000000000000000000000' + address.replace('0x', '').toLowerCase().padStart(64, '0');
+  // ERC-20 balanceOf(address) selector = 0x70a08231 + 32-byte padded address
+  const data = '0x70a08231' + address.replace('0x', '').toLowerCase().padStart(64, '0');
 
   try {
     const response = await fetch(config.rpcUrl, {
@@ -182,27 +181,5 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
       return {
         activePosition: { ...state.activePosition, ...update },
       };
-    }),
-
-  loadDemoTestingPreset: () =>
-    set({
-      walletBalanceAusd: 850.0,
-      activePosition: {
-        positionId: 'pos_monad_' + Date.now().toString(16).slice(-6),
-        state: 'ACTIVE',
-        marketId: 'MON',
-        depositAmount: 1000.0,
-        reserveBuffer: 100.0,
-        spotQuantity: 45.0,
-        spotPrice: 10.0,
-        perpQuantity: 45.0,
-        perpMarkPrice: 10.0,
-        marginRatio: 0.95,
-        tier: 'NORMAL',
-        netDeltaDollars: 0.0,
-        estimatedApr: 0.184,
-        accruedFundingEst: 4.82,
-        distanceToLiquidationPercent: 82.5,
-      },
     }),
 }));

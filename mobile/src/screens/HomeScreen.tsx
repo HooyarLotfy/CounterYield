@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { useAppStore } from "../state/store";
-import { useBackendHealth } from "../services/useBackendData";
+import { useBackendHealth, useLiveQuote } from "../services/useBackendData";
 import { useTelemetry } from "../services/useTelemetry";
 import { colors, radius, space } from "../theme";
 import { KuruLogo, PerplLogo, AusdLogo, MonadLogo } from "../components/Logos";
@@ -35,11 +35,11 @@ export const HomeScreen: React.FC = () => {
     setActiveTab,
     openUnwindModal,
     openRiskGuardModal,
-    loadDemoTestingPreset,
     logout,
   } = useAppStore();
 
   const { blockNumber, rpcLatencyMs, isConnected } = useBackendHealth();
+  const { quote } = useLiveQuote(1000);
   const { isConnected: isWsConnected } = useTelemetry(activePosition?.positionId || null);
 
   const formattedAddress = userAddress
@@ -48,6 +48,7 @@ export const HomeScreen: React.FC = () => {
 
   const hasPosition = !!activePosition && activePosition.state === "ACTIVE";
   const totalPortfolioValue = walletBalanceAusd + (hasPosition ? (activePosition.depositAmount || 0) : 0);
+  const liveApr = activePosition?.estimatedApr ?? quote?.telemetry?.netEstimatedApr ?? quote?.telemetry?.trailingFundingApr;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -92,7 +93,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.aprChip}>
               <TrendingUp size={12} color={colors.lime} strokeWidth={2.5} />
               <Text style={styles.aprText}>
-                +{( (activePosition?.estimatedApr ?? 0.184) * 100 ).toFixed(1)}% APY
+                {liveApr !== undefined ? `+${(liveApr * 100).toFixed(1)}% APY (est.)` : "Live APY"}
               </Text>
             </View>
 
