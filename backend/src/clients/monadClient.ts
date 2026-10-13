@@ -1,4 +1,5 @@
-import { createPublicClient, http, defineChain } from 'viem';
+import { createPublicClient, createWalletClient, http, defineChain } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
@@ -31,6 +32,15 @@ export const publicClient = createPublicClient({
     retryDelay: 200,
     timeout: 10_000,
   }),
+});
+
+const cleanKey = env.RELAYER_PRIVATE_KEY.replace(/^0x/, '').padStart(64, '0').slice(0, 64);
+export const relayerAccount = privateKeyToAccount(`0x${cleanKey}` as `0x${string}`);
+
+export const relayerWalletClient = createWalletClient({
+  account: relayerAccount,
+  chain: monadTestnet,
+  transport: http(env.MONAD_RPC_URL),
 });
 
 /**

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { config } from '../config/env';
+import { backendApi } from '../services/backendApi';
 
 export interface PositionState {
   positionId: string | null;
@@ -19,13 +20,15 @@ export interface PositionState {
   distanceToLiquidationPercent: number;
 }
 
+export type TabType = 'home' | 'earn' | 'portfolio' | 'spot' | 'activity' | 'settings';
+
 interface AppStoreState {
   isAuthenticated: boolean;
   userAddress: string | null;
   walletBalanceAusd: number;
   isFetchingBalance: boolean;
   activePosition: PositionState | null;
-  activeTab: 'home' | 'earn' | 'spot' | 'activity';
+  activeTab: TabType;
   isUnwindModalOpen: boolean;
   isRiskGuardModalOpen: boolean;
 
@@ -36,13 +39,14 @@ interface AppStoreState {
   // Actions
   authenticate: (address: string) => void;
   logout: () => void;
-  setActiveTab: (tab: 'home' | 'earn' | 'spot' | 'activity') => void;
+  setActiveTab: (tab: TabType) => void;
   setWalletBalance: (balance: number) => void;
   updatePosition: (position: Partial<PositionState>) => void;
   openUnwindModal: (open: boolean) => void;
   openRiskGuardModal: (open: boolean) => void;
   resetPosition: () => void;
   fetchLiveBalance: () => Promise<void>;
+  claimFaucet: () => Promise<boolean>;
   setWsConnected: (connected: boolean) => void;
   applyTelemetryUpdate: (update: Partial<PositionState>) => void;
 }
@@ -129,10 +133,31 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     if (!userAddress) return;
     set({ isFetchingBalance: true });
     try {
-      const balance = await fetchAusdBalance(userAddress);
-      if (balance > 0) {
-        set({ walletBalanceAusd: balance });
+      const [onchainBalance, faucetRes] = await Promise.all([
+        fetchAusdBalance(userAddress).catch(() => 0),
+        backendApi.getFaucetBalance(userAddress).catch(() => ({ balanceAusd: 0 })),
+      ]);
+      const resolved = Math.max(onchainBalance, faucetRes?.balanceAusd || 0);
+      set({ walletBalanceAusd: resolved });
+    } finally {
+      set({ isFetchingBalance: false });
+    }
+  },
+
+  claimFaucet: async () => {
+    const { userAddress, fetchLiveBalance } = get();
+    if (!userAddress) return false;
+    try {
+      set({ isFetchingBalance: true });
+      const res = await backendApi.claimFaucet(userAddress);
+      if (res?.totalBalanceAusd) {
+        set({ walletBalanceAusd: res.totalBalanceAusd });
+      } else {
+        await fetchLiveBalance();
       }
+      return true;
+    } catch {
+      return false;
     } finally {
       set({ isFetchingBalance: false });
     }

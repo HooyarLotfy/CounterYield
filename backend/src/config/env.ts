@@ -31,6 +31,9 @@ const envSchema = z.object({
 
   // Envio
   ENVIO_GRAPHQL_URL: z.string().url().default('http://localhost:8080/v1/graphql'),
+
+  // Relayer Wallet
+  RELAYER_PRIVATE_KEY: z.string().default('0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f360873'),
 });
 
 export const env = envSchema.parse(process.env);

@@ -54,6 +54,19 @@ export const backendApi = {
       method: 'POST',
       body: JSON.stringify({ positionId, reason: 'MANUAL_USER_REBALANCE' }),
     }),
+  claimFaucet: (recipientAddress: string) =>
+    request<{
+      recipientAddress: string;
+      claimedAusd: number;
+      totalBalanceAusd: number;
+      gasSponsored: boolean;
+      gasTxHash?: string;
+    }>('/api/v1/faucet/claim', {
+      method: 'POST',
+      body: JSON.stringify({ recipientAddress }),
+    }),
+  getFaucetBalance: (address: string) =>
+    request<{ address: string; balanceAusd: number }>(`/api/v1/faucet/balance/${address}`),
 };
 
 /** WebSocket telemetry URL for live position streaming. */

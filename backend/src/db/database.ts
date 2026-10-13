@@ -30,6 +30,7 @@ export interface DatabaseState {
   guardRecords: GuardAuditRecord[];
   rebalanceRecords: RebalanceAuditRecord[];
   policies: Record<string, any>;
+  balances: Record<string, number>;
   lastUpdated: number;
 }
 
@@ -44,6 +45,7 @@ export class Database {
       guardRecords: [],
       rebalanceRecords: [],
       policies: {},
+      balances: {},
       lastUpdated: Date.now(),
     };
     this.init();
@@ -137,6 +139,18 @@ export class Database {
 
   public getPolicy(owner: string): any | undefined {
     return this.state.policies[owner.toLowerCase()];
+  }
+
+  // --- Balances ---
+
+  public getBalance(address: string): number {
+    return this.state.balances?.[address.toLowerCase()] ?? 0;
+  }
+
+  public setBalance(address: string, amount: number): void {
+    if (!this.state.balances) this.state.balances = {};
+    this.state.balances[address.toLowerCase()] = amount;
+    this.persist();
   }
 }
 

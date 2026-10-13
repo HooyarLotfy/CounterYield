@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { useBackendHealth, useLiveQuote } from "../services/useBackendData";
@@ -25,6 +26,7 @@ import {
   ArrowRight,
   Activity,
   CheckCircle2,
+  Settings,
 } from "lucide-react-native";
 
 export const HomeScreen: React.FC = () => {
@@ -35,8 +37,11 @@ export const HomeScreen: React.FC = () => {
     setActiveTab,
     openUnwindModal,
     openRiskGuardModal,
+    claimFaucet,
     logout,
   } = useAppStore();
+
+  const [isClaimingFaucet, setIsClaimingFaucet] = React.useState(false);
 
   const { blockNumber, rpcLatencyMs, isConnected } = useBackendHealth();
   const { quote } = useLiveQuote(1000);
@@ -71,12 +76,53 @@ export const HomeScreen: React.FC = () => {
             <ChevronDown size={13} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          {/* Network Badge with Live Telemetry */}
-          <View style={styles.networkBadge}>
-            <View style={[styles.networkDot, isConnected && styles.networkDotLive]} />
-            <Text style={styles.networkName}>Monad Testnet</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              style={styles.settingsIconBtn}
+              activeOpacity={0.7}
+              onPress={() => setActiveTab("settings")}
+            >
+              <Settings size={15} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {/* Network Badge with Live Telemetry */}
+            <View style={styles.networkBadge}>
+              <View style={[styles.networkDot, isConnected && styles.networkDotLive]} />
+              <Text style={styles.networkName}>Monad Testnet</Text>
+            </View>
           </View>
         </View>
+
+        {/* 1-Tap Testnet Faucet Banner when balance is zero */}
+        {walletBalanceAusd <= 0 && (
+          <TouchableOpacity
+            style={styles.faucetBanner}
+            activeOpacity={0.85}
+            disabled={isClaimingFaucet}
+            onPress={async () => {
+              setIsClaimingFaucet(true);
+              await claimFaucet();
+              setIsClaimingFaucet(false);
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+              <AusdLogo size={24} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.faucetTitle}>1-Tap Testnet Faucet</Text>
+                <Text style={styles.faucetSub} numberOfLines={1}>
+                  Claim $1,000 AUSD & gas to start earning
+                </Text>
+              </View>
+            </View>
+            <View style={styles.faucetBtn}>
+              {isClaimingFaucet ? (
+                <ActivityIndicator size="small" color={colors.textDark} />
+              ) : (
+                <Text style={styles.faucetBtnText}>Claim</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Monumental Hero Portfolio Overview */}
         <View style={styles.portfolioHero}>
@@ -615,5 +661,52 @@ const styles = StyleSheet.create({
   telemetryText: {
     fontSize: 11,
     color: colors.textTertiary,
+  },
+  settingsIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  faucetBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderHighlight,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    marginTop: space.md,
+    marginBottom: space.xs,
+  },
+  faucetTitle: {
+    color: colors.lime,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  faucetSub: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  faucetBtn: {
+    backgroundColor: colors.lime,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    minWidth: 54,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  faucetBtnText: {
+    color: colors.textDark,
+    fontSize: 12,
+    fontWeight: "800",
   },
 });

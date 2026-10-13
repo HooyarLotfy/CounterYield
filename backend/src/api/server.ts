@@ -7,6 +7,7 @@ import { marketRoutes } from './routes/marketRoutes.js';
 import { strategyRoutes } from './routes/strategyRoutes.js';
 import { positionRoutes } from './routes/positionRoutes.js';
 import { riskRoutes } from './routes/riskRoutes.js';
+import { faucetRoutes } from './routes/faucetRoutes.js';
 import { websocketGateway } from './websocket.js';
 
 export async function createServer() {
@@ -27,6 +28,7 @@ export async function createServer() {
   await server.register(strategyRoutes);
   await server.register(positionRoutes);
   await server.register(riskRoutes);
+  await server.register(faucetRoutes);
 
   // Register WebSocket Gateway
   await server.register(websocketGateway);
