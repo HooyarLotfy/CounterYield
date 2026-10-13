@@ -56,7 +56,7 @@ export const HomeScreen: React.FC = () => {
   const liveApr = activePosition?.estimatedApr ?? quote?.telemetry?.netEstimatedApr ?? quote?.telemetry?.trailingFundingApr;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -335,7 +335,7 @@ export const HomeScreen: React.FC = () => {
         {/* Bottom Spacer */}
         <View style={{ height: 110 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

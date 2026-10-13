@@ -57,17 +57,15 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0D0D0D",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: colors.bg,
   },
   appContainer: {
     flex: 1,
     width: "100%",
     maxWidth: Platform.OS === "web" ? 480 : "100%",
     backgroundColor: colors.bg,
+    alignSelf: "center",
     position: "relative",
-    overflow: "hidden",
     ...(Platform.OS === "web"
       ? {
           boxShadow: "0 0 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08)",

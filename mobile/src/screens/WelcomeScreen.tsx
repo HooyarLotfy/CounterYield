@@ -143,7 +143,7 @@ export const WelcomeScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.container}>
         {/* Top Stepper Navigation */}
         <View style={styles.stepperHeader}>
@@ -423,7 +423,7 @@ export const WelcomeScreen: React.FC = () => {
           )}
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
