@@ -25,7 +25,7 @@ All transactions listed below are permanently recorded and verifiable on the Mon
 | Timestamp (UTC) | Action | Contract / Venue | Identifier / Monadscan Link | Status | Verification Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 2026-10-11 21:00 | RPC Handshake | Monad Testnet | [`testnet-rpc.monad.xyz`](https://testnet-rpc.monad.xyz) | VERIFIED | Active node connection, block height tracking live |
-| 2026-10-11 21:00 | Token Verification | Agora AUSD ERC-20 | [`0x00000000...9a9012a`](https://testnet.monadscan.com/token/0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a) | VERIFIED | Official Agora USD testnet collateral bound |
+| 2026-10-11 21:00 | Token Verification | Agora AUSD ERC-20 | [`0xa9012a05...5322dc`](https://testnet.monadscan.com/address/0xa9012a055bd4e0edff8ce09f960291c09d5322dc) | VERIFIED | Official Agora USD testnet collateral bound |
 | 2026-10-11 21:00 | Venue Verification | Kuru Router | [`0x7EFbE105...c054630`](https://testnet.monadscan.com/address/0x7EFbE105Ca7415dE98F96622173458ac1c054630) | VERIFIED | Spot CLOB router validated |
 | 2026-10-11 21:00 | Venue Verification | Perpl DEX | Perpl API (Market ID: `64`) | VERIFIED | 1x short hedge venue bound |
 | 2026-10-11 22:30 | Monorepo Setup | Monorepo Root | `@counter-yield/*` | VERIFIED | npm workspaces and build pipelines configured |
@@ -53,5 +53,5 @@ All transactions listed below are permanently recorded and verifiable on the Mon
 ## Contract Addresses Quick Reference
 
 - **CarryLedger (Monad Testnet)**: [`0x9998a7776edddf2f2ab6ffbb9420e5194a50f906`](https://testnet.monadscan.com/address/0x9998a7776edddf2f2ab6ffbb9420e5194a50f906)
-- **Agora AUSD Collateral**: [`0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`](https://testnet.monadscan.com/token/0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a)
+- **Agora AUSD Collateral (Monad Testnet)**: [`0xa9012a055bd4e0edff8ce09f960291c09d5322dc`](https://testnet.monadscan.com/address/0xa9012a055bd4e0edff8ce09f960291c09d5322dc) *(Mainnet: `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`)*
 - **Kuru Router**: [`0x7EFbE105Ca7415dE98F96622173458ac1c054630`](https://testnet.monadscan.com/address/0x7EFbE105Ca7415dE98F96622173458ac1c054630)

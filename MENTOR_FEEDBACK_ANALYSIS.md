@@ -26,7 +26,7 @@ This document compiles the direct feedback received from Monad hackathon mentors
   * If the projected funding rate drops below zero (or below total roundtrip slippage + gas fees), the engine enters a `Soft-Unwind / Hold Collateral in AUSD` mode, pausing new entries and safely exiting existing positions via maker/limit orders into Kuru bids.
 * **Volatility Spikes & Liquidation Risk:**
   * A rapid upward wick in MON price inflates the notional liability of the 1x Perpl short. If collateral is fixed, the margin ratio deteriorates rapidly towards liquidation.
-  * CounterYield utilizes a dedicated 3-tier risk daemon ([riskDaemon.ts](file:///e:/CounterYield/backend/src/risk/riskDaemon.ts) & [riskEngine.ts](file:///e:/CounterYield/backend/src/engine/riskEngine.ts)). If margin health drops below 1.25x, Tier 2 auto-rebalances by liquidating an exact proportional slice of spot MON on Kuru and routing the proceeds directly into Perpl's margin pool.
+  * CounterYield utilizes a dedicated 3-tier risk daemon ([riskGuard.ts](file:///e:/CounterYield/backend/src/guard/riskGuard.ts) & [circuitBreakers.ts](file:///e:/CounterYield/backend/src/guard/circuitBreakers.ts)). If margin health drops below 1.25x, Tier 2 auto-rebalances by liquidating an exact proportional slice of spot MON on Kuru and routing the proceeds directly into Perpl's margin pool.
 
 ---
 
