@@ -31,3 +31,18 @@ We designed an autonomous Risk Guard daemon that monitors position margin ratios
 - **Deployed Contract**: `CarryLedger.sol` deployed on Monad Testnet at `0x9998a7776edddf2f2ab6ffbb9420e5194a50f906`.
 - **Non-Custodial Design**: The contract never holds user capital. It verifies ownership, records state transitions (`openHedge`, `rebalanceHedge`, `closeHedge`), logs risk events, and enforces leverage bounds on-chain.
 - **GraphQL Indexing**: Integrated with Envio HyperIndex for real-time subgraph indexing of CarryLedger events and historical telemetry.
+
+## Relevant Files and Folders in the Repository
+
+The risk management architecture and on-chain audit trail include smart contracts, engine daemons, and indexer handlers:
+
+- `contracts/src/CarryLedger.sol`: Core Solidity contract on Monad Testnet logging verified proofs of hedge, risk actions, and policy caps.
+- `contracts/test/CarryLedger.t.sol`: Foundry unit test suite covering state transitions, rebalance boundaries, and non-custodial invariants.
+- `contracts/script/GasBenchmark.s.sol`: Monad gas measurement script testing execution costs for open, rebalance, and close transactions.
+- `backend/src/engine/riskEngine.ts`: Mathematical evaluation of live margin ratios, tier classifications, and deleveraging ratios.
+- `backend/src/engine/unwindEngine.ts`: Fail-safe exit module handling reduce-only Perpl closures and Kuru spot liquidations.
+- `backend/src/risk/riskDaemon.ts`: Background monitoring service polling position health on every Monad block.
+- `backend/src/test/stressHarness.test.ts`: Stress testing harness simulating +25%, +45%, and +65% market price shocks and flash wicks.
+- `indexer/config.yaml`: Envio HyperIndex configuration mapping CarryLedger event signatures on Monad Testnet.
+- `indexer/schema.graphql`: GraphQL schema defining indexed entities for user positions, guard interventions, and drift logs.
+- `indexer/src/EventHandlers.ts`: Event ingestion handlers writing parsed Monad transactions into the HyperIndex database.

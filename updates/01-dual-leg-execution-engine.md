@@ -33,6 +33,19 @@ We built a backend engine native to Monad testnet that coordinates Kuru CLOB and
 4. **Gas & Execution Optimization**:
    - Configured with strict declared gas limits (411k open, 57k rebalance, 38k guard) tailored for Monad's parallel execution environment.
 
+## Relevant Files and Folders in the Repository
+
+The implementation spans the backend trading engine, client adapters, and shared mathematical sizing models:
+
+- `backend/src/engine/strategyEngine.ts`: Core orchestrator that executes the atomic dual-leg entry, checks pre-trade eligibility, and validates execution bounds.
+- `backend/src/engine/spotExecutor.ts`: Spot execution adapter that handles client-signed Kuru fills broadcast from user wallets.
+- `backend/src/clients/kuruClient.ts`: Viem-based client encoding Kuru router calldata and fetching live CLOB market depth.
+- `backend/src/clients/perplClient.ts`: Perpl REST API integration with Ed25519 signature generation and dynamic Monad block height queries.
+- `backend/src/api/routes/strategyRoutes.ts`: Fastify route handlers exposing `/api/v1/strategy/enter`, `/market/quote`, `/rebalance`, and `/unwind`.
+- `shared/src/calculators/OrderSizer.ts`: Deterministic capital allocation model splitting deposits into 10% cash buffer and two equal 45% legs.
+- `shared/src/calculators/BreakEvenCalculator.ts`: Formulas calculating net annual percentage yield and estimated time-to-profit after round-trip taker fees.
+- `backend/src/test/engine.test.ts`: Automated test suite covering dual-leg coordination, order sizer math, and API endpoints.
+
 ## Outcome
 
 Users achieve delta-neutral dollar exposure (delta = $0.00) in one tap. Price movements on MON cancel out, allowing users to earn the continuous funding rate (~18.4% APY) denominated entirely in AUSD.

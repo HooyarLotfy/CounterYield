@@ -28,6 +28,22 @@ We built a mobile application using Expo React Native supporting iOS, Android, a
    - Features custom vector logo marks for Kuru, Perpl, Monad, and Agora.
    - Structured into a 3-step educational onboarding flow explaining the strategy, venue mechanics, and device security.
 
+## Relevant Files and Folders in the Repository
+
+The mobile client, authentication vault, and telemetry hooks are organized into dedicated subdirectories within the mobile package:
+
+- `mobile/src/auth/meraAuth.ts`: Device biometric capability detection, operating system authentication prompt triggers, and deterministic wallet address derivation.
+- `mobile/src/auth/prfVault.ts`: Hardware-isolated credential vault using Web Crypto API (`crypto.subtle`) for authenticated AES-256-GCM encryption.
+- `mobile/src/components/Logos.tsx`: Precision SVG vector logos for Kuru CLOB, Perpl DEX, Monad (MON), and Agora (AUSD).
+- `mobile/src/screens/WelcomeScreen.tsx`: 3-step educational onboarding explaining delta-neutral mechanics, connected DEX venues, and biometric setup.
+- `mobile/src/screens/HomeScreen.tsx`: Core portfolio view displaying net delta, live funding APY, and real-time WebSocket connection state.
+- `mobile/src/screens/StartEarningScreen.tsx`: Single-tap deposit form with preset chips, automated capital sizing breakdown, and break-even estimations.
+- `mobile/src/screens/SpotScreen.tsx`: Standalone orderbook depth viewer for Kuru MON/AUSD market displaying real-time bids and asks.
+- `mobile/src/screens/ActivityScreen.tsx`: Auditable transaction feed linking verified on-chain executions to the Monadscan explorer.
+- `mobile/src/services/useTelemetry.ts`: WebSocket client hook managing live subscription state and reconnection logic.
+- `mobile/src/state/store.ts`: Central Zustand application store managing user authentication and Monad RPC balance queries.
+- `mobile/src/theme.ts`: Design system tokens establishing Spore dark matte charcoal surfaces, spacing scales, and typography hierarchies.
+
 ## Outcome
 
 Users can open the app, authenticate with Face ID in two seconds, deposit AUSD, and monitor their position in real time with zero seed phrases or browser extension setup.
