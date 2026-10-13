@@ -101,16 +101,43 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     set({
       isAuthenticated: true,
       userAddress: address,
-      walletBalanceAusd: 0.0, // Start at 0, then fetch real balance
       isFetchingBalance: true,
     });
-    // Fetch real AUSD balance after authentication
-    fetchAusdBalance(address)
-      .then((balance) => {
-        set({ walletBalanceAusd: balance, isFetchingBalance: false });
+
+    // 1. Hydrate real AUSD balance from Monad RPC and backend database
+    get().fetchLiveBalance();
+
+    // 2. Hydrate active positions from backend database
+    backendApi.positions(address)
+      .then((positions) => {
+        if (Array.isArray(positions)) {
+          const active = positions.find((p) => p.state === 'ACTIVE');
+          if (active) {
+            set({
+              activePosition: {
+                positionId: active.positionId,
+                state: 'ACTIVE',
+                marketId: active.marketId || 'MON',
+                depositAmount: parseFloat(active.initialDepositAusd) || 0,
+                reserveBuffer: parseFloat(active.reserveBufferAusd) || 0,
+                spotQuantity: parseFloat(active.spotLeg?.quantity) || 0,
+                spotPrice: parseFloat(active.spotLeg?.entryPrice) || 0,
+                perpQuantity: parseFloat(active.perpLeg?.quantity) || 0,
+                perpMarkPrice: parseFloat(active.perpLeg?.entryPrice) || 0,
+                marginRatio: active.marginRatio || 1.0,
+                tier: active.currentTier || 'NORMAL',
+                netDeltaDollars: parseFloat(active.netDeltaDollars) || 0.0,
+                estimatedApr: 0.156,
+                accruedFundingEst: parseFloat(active.estimatedAccrualUsd) || 0.0,
+                distanceToLiquidationPercent: active.distanceToLiquidationPercent || 82.0,
+              },
+              wsPositionId: active.positionId,
+            });
+          }
+        }
       })
-      .catch(() => {
-        set({ walletBalanceAusd: 0.0, isFetchingBalance: false });
+      .catch((err) => {
+        console.warn('Failed to hydrate positions on auth:', err);
       });
   },
 
@@ -137,7 +164,8 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
         fetchAusdBalance(userAddress).catch(() => 0),
         backendApi.getFaucetBalance(userAddress).catch(() => ({ balanceAusd: 0 })),
       ]);
-      const resolved = Math.max(onchainBalance, faucetRes?.balanceAusd || 0);
+      const faucetBal = (faucetRes as any)?.balanceAusd ?? (faucetRes as any)?.data?.balanceAusd ?? 0;
+      const resolved = Math.max(onchainBalance, faucetBal);
       set({ walletBalanceAusd: resolved });
     } finally {
       set({ isFetchingBalance: false });
@@ -150,11 +178,11 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     try {
       set({ isFetchingBalance: true });
       const res = await backendApi.claimFaucet(userAddress);
-      if (res?.totalBalanceAusd) {
-        set({ walletBalanceAusd: res.totalBalanceAusd });
-      } else {
-        await fetchLiveBalance();
+      const totalBal = (res as any)?.totalBalanceAusd ?? (res as any)?.data?.totalBalanceAusd;
+      if (totalBal) {
+        set({ walletBalanceAusd: totalBal });
       }
+      await fetchLiveBalance();
       return true;
     } catch {
       return false;

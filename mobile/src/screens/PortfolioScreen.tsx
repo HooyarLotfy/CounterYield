@@ -23,6 +23,7 @@ import {
   Lock,
   Wallet,
 } from 'lucide-react-native';
+import { AusdLogo, KuruLogo, PerplLogo } from '../components/Logos';
 
 export const PortfolioScreen: React.FC = () => {
   const {
@@ -60,32 +61,33 @@ export const PortfolioScreen: React.FC = () => {
   };
 
   // Portfolio calculations
-  const hasPosition = Boolean(activePosition && activePosition.depositAmount > 0);
+  const hasPosition = Boolean(activePosition && Number(activePosition.depositAmount || 0) > 0);
   const spotCapitalAllocated = hasPosition
-    ? ((activePosition?.depositAmount || 0) - (activePosition?.reserveBuffer || 0)) / 2
+    ? (Number(activePosition?.depositAmount || 0) - Number(activePosition?.reserveBuffer || 0)) / 2
     : 0;
   // Use committed spot capital or accurate price multiplication (prevent 2-decimal truncation error)
   const spotValueUsd = hasPosition
-    ? (activePosition?.spotPrice && activePosition.spotPrice > 0.05
-        ? (activePosition.spotQuantity || 0) * activePosition.spotPrice
+    ? (Number(activePosition?.spotPrice || 0) > 0.05
+        ? Number(activePosition?.spotQuantity || 0) * Number(activePosition?.spotPrice || 0)
         : spotCapitalAllocated)
     : 0;
   const perpMarginUsd = spotCapitalAllocated;
-  const reserveUsd = hasPosition ? activePosition?.reserveBuffer || 0 : 0;
-  const cashUsd = walletBalanceAusd;
+  const reserveUsd = hasPosition ? Number(activePosition?.reserveBuffer || 0) : 0;
+  const cashUsd = Number(walletBalanceAusd || 0);
 
   const totalNetWorth = spotValueUsd + perpMarginUsd + reserveUsd + cashUsd;
 
   // Unified APY matching HomeScreen exactly:
-  const liveAprRate =
+  const liveAprRate = Number(
     activePosition?.estimatedApr ??
     quote?.telemetry?.netEstimatedApr ??
     quote?.telemetry?.trailingFundingApr ??
-    0;
+    0
+  );
   const liveApyText = `${(liveAprRate * 100).toFixed(1)}% Est. APY`;
 
-  const netDelta = hasPosition ? activePosition?.netDeltaDollars || 0.0 : 0.0;
-  const accruedYield = hasPosition ? activePosition?.accruedFundingEst || 0.0 : 0.0;
+  const netDelta = hasPosition ? Number(activePosition?.netDeltaDollars || 0) : 0.0;
+  const accruedYield = hasPosition ? Number(activePosition?.accruedFundingEst || 0) : 0.0;
 
   return (
     <ScrollView
@@ -171,9 +173,9 @@ export const PortfolioScreen: React.FC = () => {
           <View style={styles.meterLabels}>
             <Text style={styles.meterSubtext} numberOfLines={1}>
               {hasPosition
-                ? `Spot: $${spotValueUsd.toFixed(0)} · Perp: -$${perpMarginUsd.toFixed(0)} · Net Δ: $${netDelta.toFixed(2)}`
+                ? `Spot: $${Number(spotValueUsd || 0).toFixed(0)} · Perp: -$${Number(perpMarginUsd || 0).toFixed(0)} · Net Δ: $${Number(netDelta || 0).toFixed(2)}`
                 : totalNetWorth > 0
-                ? `Liquid: $${cashUsd.toFixed(2)} · Open hedge to begin`
+                ? `Liquid: $${Number(cashUsd || 0).toFixed(2)} · Open hedge to begin`
                 : 'No active funds deployed. Claim testnet AUSD to get started.'}
             </Text>
           </View>
@@ -219,16 +221,9 @@ export const PortfolioScreen: React.FC = () => {
           <View style={[styles.assetCard, !hasPosition && styles.assetCardInactive]}>
             <View style={styles.assetHeader}>
               <View style={styles.assetLeft}>
-                <View
-                  style={[
-                    styles.venueDot,
-                    {
-                      backgroundColor: hasPosition
-                        ? colors.kuruOrange
-                        : colors.borderSubtle,
-                    },
-                  ]}
-                />
+                <View style={{ marginRight: 10 }}>
+                  <KuruLogo size={24} />
+                </View>
                 <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Kuru Spot MON</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>
@@ -261,16 +256,9 @@ export const PortfolioScreen: React.FC = () => {
           <View style={[styles.assetCard, !hasPosition && styles.assetCardInactive]}>
             <View style={styles.assetHeader}>
               <View style={styles.assetLeft}>
-                <View
-                  style={[
-                    styles.venueDot,
-                    {
-                      backgroundColor: hasPosition
-                        ? colors.perplCyan
-                        : colors.borderSubtle,
-                    },
-                  ]}
-                />
+                <View style={{ marginRight: 10 }}>
+                  <PerplLogo size={24} />
+                </View>
                 <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Perpl MON-PERP</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>
@@ -343,7 +331,9 @@ export const PortfolioScreen: React.FC = () => {
           <View style={styles.assetCard}>
             <View style={styles.assetHeader}>
               <View style={styles.assetLeft}>
-                <View style={[styles.venueDot, { backgroundColor: colors.monadViolet }]} />
+                <View style={{ marginRight: 10 }}>
+                  <AusdLogo size={24} />
+                </View>
                 <View style={styles.assetNameCol}>
                   <Text style={styles.assetName}>Available Cash</Text>
                   <Text style={styles.venueSubtext} numberOfLines={1}>

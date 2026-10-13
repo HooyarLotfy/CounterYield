@@ -87,29 +87,18 @@ export const MonadLogo: React.FC<LogoProps> = ({ size = 28, style }) => {
 };
 
 /**
- * Agora AUSD Logo Mark
+ * Authentic Agora AUSD Token Logo Mark
  * Agora Dollar is Monad's institutional native stablecoin.
- * Rich emerald teal coin with Agora A monogram.
+ * Official asset from Agora token registry.
  */
 export const AusdLogo: React.FC<LogoProps> = ({ size = 28, style }) => {
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Defs>
-          <LinearGradient id="ausdGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#059669" />
-            <Stop offset="100%" stopColor="#047857" />
-          </LinearGradient>
-        </Defs>
-        <Circle cx="20" cy="20" r="20" fill="url(#ausdGrad)" />
-        <Circle cx="20" cy="20" r="17.5" stroke="#34D399" strokeWidth="1" strokeOpacity={0.4} />
-        {/* AUSD stylized 'A' */}
-        <Path
-          d="M20 11L13 27.5H16.8L18.4 23.5H21.6L23.2 27.5H27L20 11ZM19.2 20.2L20 16.8L20.8 20.2H19.2Z"
-          fill="#FFFFFF"
-        />
-        <Circle cx="20" cy="29" r="1.5" fill="#34D399" />
-      </Svg>
+      <Image
+        source={require('../../assets/brands/ausd.png')}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        resizeMode="contain"
+      />
     </View>
   );
 };

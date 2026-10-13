@@ -9,5 +9,6 @@
     "resolveJsonModule": true,
     "baseUrl": "."
   },
-  "include": ["App.tsx", "index.js", "src/**/*", "*.d.ts"]
+  "include": ["App.tsx", "index.js", "src/**/*", "*.d.ts"],
+  "exclude": ["node_modules"]
 }

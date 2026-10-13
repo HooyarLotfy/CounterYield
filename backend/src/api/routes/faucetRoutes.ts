@@ -55,6 +55,13 @@ export async function faucetRoutes(fastify: FastifyInstance) {
 
       return {
         success: true,
+        data: {
+          recipientAddress: target,
+          claimedAusd: 1000.0,
+          totalBalanceAusd: newBalance,
+          gasSponsored,
+          gasTxHash: gasSponsorshipTxHash,
+        },
         recipientAddress: target,
         claimedAusd: 1000.0,
         totalBalanceAusd: newBalance,
@@ -75,6 +82,10 @@ export async function faucetRoutes(fastify: FastifyInstance) {
       const balance = db.getBalance(address);
       return {
         success: true,
+        data: {
+          address,
+          balanceAusd: balance,
+        },
         address,
         balanceAusd: balance,
         timestamp: Date.now(),

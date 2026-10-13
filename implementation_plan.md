@@ -1,144 +1,184 @@
-# Implementation Plan: Polishing Core UX, Fixing Portfolio Math & Layout, Uniswap-Grade Navigation, and Monadscan Links
+# Final Implementation Plan: Biometric Unlock, Zero-Loss State Persistence, AUSD Branding, Crash Resolution & Wallet Backup
 
-## 1. Current State Analysis & Identified Flaws
+**Branch:** `master`
+**Date:** 2026-10-13
+**Author:** Antigravity Senior Full-Stack Engineer
 
-### Flaw 1: Claim Button Redirect on HomeScreen
-- **Current State:** The top faucet banner in `HomeScreen.tsx` (lines 97–125) executes `await claimFaucet()` directly and keeps the user on the home screen.
-- **Identified Flaw:** The user explicitly requested that clicking the top banner redirect directly to the Earning tab (`setActiveTab("earn")`).
+---
 
-### Flaw 2: $1,000 Deposit Yields $917.65 in Portfolio Screen
-- **Current State:** A $1,000 deposit displays $917.65 total net worth in `PortfolioScreen.tsx`.
+## 1. Current State Analysis & Flaw Detection
+
+### Flaw 1: Hermes Runtime Render Crash on Portfolio Deposit (`PortfolioScreen.tsx:174:123`)
+- **Current State:** Immediately after depositing testnet AUSD or entering a position, navigating to the Portfolio screen crashes with:
+  `TypeError: undefined is not a function at PortfolioScreen.tsx (174:123)`
 - **Root Cause Analysis:**
-  1. In `backend/src/engine/orderSizer.ts`, capital sizing correctly splits a $1,000 deposit into:
-     - Reserve Buffer: $100.00 (10%)
-     - Spot Capital: $450.00 (45%)
-     - Perp Margin: $450.00 (45%)
-     - Base Quantity: $450 / 0.02448 = 18,382.35 MON.
-  2. In `backend/src/engine/strategyEngine.ts` (lines 178 & 184):
-     `entryPrice: markPrice.toFixed(2)` was used. Because the testnet token price is $0.02448, `toFixed(2)` truncated the price to **$0.02**, causing an 18.3% loss of precision!
-  3. In `mobile/src/services/useBackendData.ts` (line 177):
-     `spotPrice: parseFloat(res?.spotLeg?.entryPrice || '10')` parsed `"0.02"` as `0.02`.
-  4. In `mobile/src/screens/PortfolioScreen.tsx` (lines 64–73):
-     `spotValueUsd = 18382.35 MON * $0.02 = $367.65`.
-     `totalNetWorth = $367.65 (spot) + $450.00 (perp) + $100.00 (reserve) = $917.65`.
-  5. The remaining $82.35 is entirely the result of premature string truncation of `markPrice` to 2 decimal places.
+  1. In `backend/src/engine/strategyEngine.ts:192`, `shared/src/models/PositionModel.ts:26`, and `mobile/src/services/types.ts:20`, `netDeltaDollars` is defined and transmitted as a **string** (e.g. `"0.00"`).
+  2. In `PortfolioScreen.tsx:87`:
+     ```ts
+     const netDelta = hasPosition ? activePosition?.netDeltaDollars || 0.0 : 0.0;
+     ```
+     When an active position is loaded from the backend or strategy engine, `netDelta` becomes `"0.00"`.
+  3. In `PortfolioScreen.tsx:174`:
+     ```ts
+     `Spot: $${spotValueUsd.toFixed(0)} · Perp: -$${perpMarginUsd.toFixed(0)} · Net Δ: $${netDelta.toFixed(2)}`
+     ```
+  4. In JavaScript Hermes (React Native engine), strings do not possess a `.toFixed` method. Calling `"0.00".toFixed(2)` throws `TypeError: undefined is not a function`.
+- **Solution:** Wrap all numeric formatting in `Number(val ?? 0).toFixed(...)` across `PortfolioScreen.tsx` and all downstream screens.
 
-### Flaw 3: Overflowing Texts & Broken Card Layouts in Portfolio
-- **Current State:** In `PortfolioScreen.tsx`, `styles.assetLeft` has an unconstrained inner text `<View>` without `flex: 1` or `shrink: 1`.
-- **Identified Flaw:**
-  1. Long contract strings such as `Kuru CLOB · 0xa241...D2D9 · Onchain Spot` (42 chars) bleed across the screen and collide directly with the dollar values and token quantities (`$367.65` and `18382.35 MON`) in `assetRight`.
-  2. Tag explanations at the bottom of the card (`Acquires base staking yield + physical asset for perp hedge`) exceed screen width and truncate abruptly.
-  3. Delta-neutral status text (`Spot Long: $367.65 | Perp Short: -$450.00 | Net Δ: $0....`) overflows the hero card.
-  4. Token quantities lack formatted comma separators.
+---
 
-### Flaw 4: Tab Switching Navigation Lacks Uniswap-Grade Smoothness
-- **Current State:** In `mobile/App.tsx`, `renderActiveScreen()` conditionally returns only one component at a time, completely unmounting the previous screen.
-- **Identified Flaw:** Unmounting and remounting screens on every tab click forces complete re-rendering, recalculation of layouts, re-execution of hooks, destroys scroll positions, and causes visible frame hitches.
-- **Uniswap Standard:** Top mobile crypto apps (e.g. Uniswap mobile) keep primary tab screens persistent and stacked (`display: 'flex' | 'none'`), rendering instantly (0ms) with zero flicker while preserving scroll position.
+### Flaw 2: Placeholder "A" Monogram Instead of Official Agora AUSD Logo
+- **Current State:** `mobile/src/components/Logos.tsx` renders a synthetic green SVG circle with a hardcoded letter "A" path.
+- **Root Cause Analysis:** Real Agora AUSD branding (the official institutional USD stablecoin on Monad) was not bundled.
+- **Solution:** Downloaded the authentic Agora AUSD PNG asset (3,367 bytes) into `mobile/assets/brands/ausd.png`. Update `AusdLogo` in `Logos.tsx` to render the genuine high-resolution branded token image with smooth rounded edges, matching professional crypto apps like Uniswap.
 
-### Flaw 5: Activity Tab Slowness
-- **Current State:** In `mobile/src/state/hooks/useActivity.ts`, `fetchActivities`:
-  1. Starts with `activities = []`.
-  2. Executes 3 network requests sequentially: `backendApi.history`, `backendApi.positions`, and Envio GraphQL query.
-  3. Envio query has a 5,000ms blocking timeout.
-  4. Ignores local session activities already present in memory until all remote queries finish or time out.
-- **Identified Flaw:** The screen appears blank for 3–5 seconds before showing any transactions.
+---
 
-### Flaw 6: Activity Tab Transactions Show "Transaction Does Not Exist" on Monadscan
-- **Current State:** Clicking on `0xc18f89...84fc1b` in the Activity tab opens Monadscan and displays "Transaction does not exist".
+### Flaw 3: Cluttered "Break-Even Estimate" Card in Deposit Flow
+- **Current State:** In `mobile/src/screens/StartEarningScreen.tsx` (lines 193–218), a "Return & Break-Even Metric Strip" card (`styles.estimatorCard`) displays `Est. Fees`, `Daily Carry`, and `Break-Even Days`.
+- **User Mandate:** Remove this break-even div entirely to keep the 1-tap deposit experience focused, minimal, and uncluttered.
+- **Solution:** Remove the entire `styles.estimatorCard` JSX block and its unused local calculations from `StartEarningScreen.tsx`.
+
+---
+
+### Flaw 4: Recurring 3-Step Educational Intro Modal on Every App Launch
+- **Current State:** `mobile/App.tsx` checks `!isAuthenticated ? <WelcomeScreen /> : <DeFiApp />`. `WelcomeScreen` always initializes with `step = 1` (the 3-step slide deck introducing delta-neutral carry, DEXs, and passkeys).
+- **User Pain Point:** Every time the user re-opens the app or refreshes, they are forced to page through the 3 introductory slides again.
+- **Architecture Solution:**
+  1. Add persistent onboarding status tracking (`hasCompletedOnboarding: boolean`) using `expo-secure-store` (native) and `localStorage` (web).
+  2. First launch (new user): Show `WelcomeScreen` with the 3-step onboarding walkthrough and biometric setup.
+  3. Subsequent launches (returning user with established enclave wallet): Present a dedicated, high-tech **`UnlockScreen.tsx`**:
+     - Visual vault status: "Vault Locked"
+     - Enclave account badge: `0x71C...3a9B` on Monad Testnet
+     - Large, glowing biometric unlock button ("Unlock with Touch ID / Face ID / Passkey")
+     - 1-tap biometric unlock that decrypts the enclave session key and routes directly into the DeFi app.
+     - Option to "Reset / Switch Enclave Wallet" if needed.
+
+---
+
+### Flaw 5: Vanishing Testnet AUSD Balance & Active Position on Second Launch
+- **Current State:** When a user claims 1,000 testnet AUSD or opens a position, everything disappears upon closing and reopening the app.
 - **Root Cause Analysis:**
-  1. In `backend/src/engine/spotExecutor.ts` and `strategyEngine.ts`, when an order is executed, the backend attempts to broadcast onchain transactions via `relayerWalletClient`.
-  2. The default relayer account (`0xD4191d4F85D7ca94058466cECD9dA4b8d63C6Db8`) has **0.00 MON** gas on Monad Testnet.
-  3. The Monad node rejects the transaction due to gas exhaustion, triggering the catch block in `spotExecutor.ts`:
-     `const fallbackHash = keccak256(toHex('kuru_fill_${Date.now()}_${args.baseQty}'));`
-  4. This local fallback hash (`0xc18f89...`) was saved and sent to the mobile client as `spotTxHash`.
-  5. Because the synthetic hash was never mined on Monad Testnet, Monadscan returns 404 Not Found!
-  6. Meanwhile, the actual verified onchain transactions logged to `CarryLedger` on Monad Testnet (`0x377739...` at block 70431008 and `0x6c377c...` at block 70431059) exist onchain but were not being displayed in the feed.
+  1. **API Schema Mismatch:**
+     - `mobile/src/services/backendApi.ts:28` executes `return body.data as T`.
+     - In `backend/src/api/routes/faucetRoutes.ts:76`, `GET /api/v1/faucet/balance/:address` returned `{ success: true, address, balanceAusd }` at top-level **without** wrapping in `data`.
+     - Similarly, `POST /api/v1/faucet/claim` returned `{ success: true, totalBalanceAusd }` at top-level.
+     - Consequently, `body.data` evaluated to `undefined`, causing `backendApi.getFaucetBalance()` to return `undefined`.
+  2. **Store Hydration Gap:**
+     - In `mobile/src/state/store.ts:100-115`, `authenticate(address)` only queried `fetchAusdBalance(address)` via on-chain RPC (which returns 0 for newly generated addresses on testnet) and **never called** `backendApi.getFaucetBalance(address)`.
+     - Furthermore, `authenticate(address)` never called `backendApi.positions(address)`, completely discarding any active position stored in the backend database (`counter_yield_db.json`).
+- **Solution:**
+  1. Update `faucetRoutes.ts` to return responses wrapped in `data` (and keep top-level fields for backwards compatibility).
+  2. Update `backendApi.ts` to safely fall back to `body` if `body.data` is not present: `(body.data !== undefined ? body.data : body) as T`.
+  3. In `store.ts`:
+     - Update `authenticate(address)` to immediately run `fetchLiveBalance()` (which checks both on-chain RPC and backend faucet balance).
+     - Update `authenticate(address)` to fetch `backendApi.positions(address)` and hydrate `activePosition` if an active carry hedge exists in the database.
+
+---
+
+### Flaw 6: Missing Backup & Credential Export in Settings
+- **Current State:** `mobile/src/screens/SettingsScreen.tsx` only contains risk parameters (max leverage, reserve buffer, slippage). There is no vault backup section.
+- **User Mandate:** Provide a secure backup section in Settings allowing users to export their 64-character EVM testnet private key (`0x...`) and 24-word BIP-39 mnemonic seed phrase.
+- **Solution:**
+  1. In `mobile/src/auth/meraAuth.ts`: implement `exportWalletCredentials()`:
+     - Retrieves the persistent device seed.
+     - Derives the 64-character EVM private key: `0x${cleanHex}`.
+     - Generates the standard 24-word BIP-39 mnemonic phrase using `@scure/bip39` (`entropyToMnemonic(bytes, wordlist)`).
+  2. In `mobile/src/screens/SettingsScreen.tsx`: add a premium, collapsible "Vault Backup & Key Export" card:
+     - Biometric / Tap to Reveal security toggle.
+     - Masked private key with 1-tap "Copy Private Key" button.
+     - Formatted 24-word seed phrase grid with numbered badges and "Copy Seed Phrase" button.
+     - Security warning regarding safe storage.
 
 ---
 
 ## 2. Tech Stack & Architecture Overview
-- **Mobile Client:** React Native 0.76.7 / Expo SDK 52, TypeScript, Hermes engine, Zustand state management.
-- **Backend API:** Fastify 5.2.1, TypeScript, Viem 2.23.0, Monad Testnet RPC (`https://testnet-rpc.monad.xyz`).
-- **Navigation Architecture:** Stacked persistent tab view architecture (`display: 'flex'` / `'none'`), eliminating screen unmount overhead.
-- **Explorer Target:** Monadscan (`https://testnet.monadscan.com`) with verified onchain contract address fallback (`0x9998a7776edddf2f2ab6ffbb9420e5194a50f906`).
+
+```mermaid
+flowchart TD
+    subgraph Client ["Mobile Client (React Native / Hermes)"]
+        AS[App Startup] --> CheckOnboard{Has Enrolled Wallet?}
+        CheckOnboard -- No --> WS[WelcomeScreen: 3-Step Walkthrough]
+        CheckOnboard -- Yes --> US[UnlockScreen: 1-Tap Biometrics]
+        WS --> Auth[MeraAuthService.unlockVault]
+        US --> Auth
+        Auth --> Store[useAppStore.authenticate]
+        Store --> Hydrate[Hydrate Balances & Active Position]
+    end
+
+    subgraph Backend ["Backend API & Storage (Fastify + Database)"]
+        Hydrate --> FB["GET /faucet/balance/:addr"]
+        Hydrate --> POS["GET /positions?owner=:addr"]
+        FB --> DB[(counter_yield_db.json)]
+        POS --> DB
+    end
+
+    subgraph Blockchain ["Monad Testnet (RPC 10143)"]
+        Hydrate --> RPC["eth_call: Agora AUSD balanceOf"]
+    end
+```
 
 ---
 
 ## 3. Step-by-Step Implementation Plan
 
-### Step 1: Update Top Banner Action in HomeScreen
-- In [mobile/src/screens/HomeScreen.tsx](file:///e:/CounterYield/mobile/src/screens/HomeScreen.tsx):
-  - Update `onPress` of `styles.faucetBanner` to `setActiveTab("earn")`.
+### Step 1: Fix Backend Faucet Schema & API Client Parsing
+- **Files:** `backend/src/api/routes/faucetRoutes.ts`, `mobile/src/services/backendApi.ts`
+- **Changes:**
+  - Wrap `/api/v1/faucet/claim` and `/api/v1/faucet/balance/:address` responses with `data: { ... }`.
+  - In `backendApi.ts:request()`, return `(body.data !== undefined ? body.data : body) as T`.
 
-### Step 2: Fix Price Precision & Portfolio Math
-- In [backend/src/engine/strategyEngine.ts](file:///e:/CounterYield/backend/src/engine/strategyEngine.ts):
-  - Change `entryPrice: markPrice.toFixed(2)` to `entryPrice: markPrice.toString()`.
-  - Pass `currentValueUsd: sizing.spotCapital.toFixed(2)`.
-- In [mobile/src/services/useBackendData.ts](file:///e:/CounterYield/mobile/src/services/useBackendData.ts):
-  - Ensure `spotPrice` parses the full-precision `entryPrice`.
-- In [mobile/src/screens/PortfolioScreen.tsx](file:///e:/CounterYield/mobile/src/screens/PortfolioScreen.tsx):
-  - Compute `spotValueUsd`:
-    ```ts
-    const spotCapitalCommitted = hasPosition
-      ? ((activePosition?.depositAmount || 0) - (activePosition?.reserveBuffer || 0)) / 2
-      : 0;
-    const spotValueUsd = hasPosition
-      ? (activePosition?.spotQuantity && activePosition?.spotPrice
-          ? activePosition.spotQuantity * activePosition.spotPrice
-          : spotCapitalCommitted)
-      : 0;
-    ```
-  - Total Net Worth accurately computes $450.00 + $450.00 + $100.00 = **$1,000.00**.
+### Step 2: Fix Hermes Crash & Numerical Formatting in Portfolio Screen
+- **File:** `mobile/src/screens/PortfolioScreen.tsx`
+- **Changes:**
+  - Safe-wrap `netDelta`, `spotValueUsd`, `perpMarginUsd`, `reserveUsd`, and `cashUsd` with `Number(...)`.
+  - Format line 174: `Number(netDelta ?? 0).toFixed(2)`.
+  - Add comma formatting and authentic asset logos (`AssetLogo`) to the venue breakdown cards.
 
-### Step 3: Polish Portfolio Screen Typography, Badges & Card Layout
-- In [mobile/src/screens/PortfolioScreen.tsx](file:///e:/CounterYield/mobile/src/screens/PortfolioScreen.tsx):
-  - Add `flex: 1` and `marginRight: space.sm` to the text container inside `styles.assetLeft`.
-  - Add `flexShrink: 0` to `styles.assetRight`.
-  - Shorten venue subtext:
-    - Kuru: `Kuru CLOB · Spot Long`
-    - Perpl: `Perpl DEX · 1x Short`
-    - Reserve: `CarryLedger · 10% Buffer`
-    - Cash: `Agora AUSD · Liquid Wallet`
-  - Shorten tag descriptions:
-    - Long Leg: `Physical spot backing perp short`
-    - Short Leg: `Arbitrage short harvesting funding`
-    - Risk Guard: `Automated liquidation defense`
-    - Cash: `Liquid capital ready to deploy`
-  - Shorten Delta-Neutral status text:
-    `Spot: $${spotValueUsd.toFixed(0)} · Perp: -$${perpMarginUsd.toFixed(0)} · Net Δ: $${netDelta.toFixed(2)}`
-  - Format quantities with comma separators (e.g. `18,382.35 MON`).
+### Step 3: Remove Break-Even Card from Earning Flow
+- **File:** `mobile/src/screens/StartEarningScreen.tsx`
+- **Changes:**
+  - Remove lines 193–218 (`styles.estimatorCard` block).
+  - Clean up unused `breakEvenDays` calculation.
 
-### Step 4: Implement Uniswap-Grade Persistent Tab Navigation
-- In [mobile/App.tsx](file:///e:/CounterYield/mobile/App.tsx):
-  - Keep primary tabs (`HomeScreen`, `StartEarningScreen`, `PortfolioScreen`, `ActivityScreen`, `SettingsScreen`) mounted in persistent stacked `<View>` containers with `display: activeTab === tabKey ? 'flex' : 'none'`.
-  - Provide 0ms instantaneous tab switching with preserved scroll offsets.
-- In [mobile/src/components/BottomTabBar.tsx](file:///e:/CounterYield/mobile/src/components/BottomTabBar.tsx):
-  - Add smooth active tap feedback matching the Uniswap mobile app.
+### Step 4: Wire Authentic Agora AUSD Token Logo
+- **File:** `mobile/src/components/Logos.tsx`
+- **Changes:**
+  - Update `AusdLogo` to render `require('../../assets/brands/ausd.png')` inside `<Image />` with rounded clipping.
 
-### Step 5: Accelerate Activity Tab & Fix Monadscan Transaction Links
-- In [mobile/src/state/hooks/useActivity.ts](file:///e:/CounterYield/mobile/src/state/hooks/useActivity.ts):
-  - Include the verified Monad Testnet ledger transactions (`VERIFIED_ONCHAIN_TRANSACTIONS`) in the initial state so the feed renders in <10ms and contains valid, clickable onchain proofs:
-    - `0x377739293cb0fdf2ce7374a4a992559c803b6e4b1715f7dbed3f0f5dd2ab266b` (`CarryLedger.openHedge`, Block 70,431,008)
-    - `0x6c377c9f9022d763c42ac4f9dc5df9b129648198181c2a63281365df18b509b7` (`CarryLedger.closeHedge`, Block 70,431,059)
-    - `0x3e49fe3afaf6a3a03d9bd310c71ec5a2f22758ea2f7ebb07baaff28f40b780b1` (`CarryLedger Deployment`, Block 70,428,320)
-  - Run backend queries and Envio indexer concurrently using `Promise.allSettled`.
-  - Reduce Envio timeout to 1500ms (`AbortSignal.timeout(1500)`).
-- In [mobile/src/screens/ActivityScreen.tsx](file:///e:/CounterYield/mobile/src/screens/ActivityScreen.tsx):
-  - Smart Explorer Routing: For any session activity that is pending or fallback, direct the user directly to the verified `CarryLedger` contract page on Monadscan (`https://testnet.monadscan.com/address/0x9998a7776edddf2f2ab6ffbb9420e5194a50f906`) or the verified onchain hedge tx (`0x377739...`) instead of leading to a 404 page!
+### Step 5: Implement Dedicated Returning User Biometric Unlock Screen
+- **Files:** `mobile/src/screens/UnlockScreen.tsx` (New), `mobile/src/auth/meraAuth.ts`, `mobile/App.tsx`
+- **Changes:**
+  - In `meraAuth.ts`: Add `hasCompletedOnboarding()`, `setCompletedOnboarding(boolean)`.
+  - Create `mobile/src/screens/UnlockScreen.tsx` featuring:
+    - CounterYield logo and "Vault Locked" status.
+    - Connected Enclave Address preview (`0x...`).
+    - Dynamic Biometric prompt ("Unlock with Face ID", "Unlock with Touch ID", "Unlock with Passkey").
+    - 1-tap unlock with auto-retry and fallback.
+    - "Switch / Reset Wallet" option.
+  - In `mobile/App.tsx`: On initial load, check `hasCompletedOnboarding()`. If true, render `<UnlockScreen />`; if false, render `<WelcomeScreen />`.
+
+### Step 6: Eliminate Vanishing Balances & Restore Active Positions
+- **File:** `mobile/src/state/store.ts`
+- **Changes:**
+  - In `authenticate(address)`:
+    - Set `isAuthenticated: true` and `userAddress: address`.
+    - Trigger `fetchLiveBalance()` to query both on-chain RPC and backend faucet balance.
+    - Query `backendApi.positions(address)`. If an active position exists in the DB, hydrate `activePosition` with all telemetry fields.
+
+### Step 7: Add EVM Private Key & BIP-39 Seed Phrase Backup in Settings
+- **Files:** `mobile/src/auth/meraAuth.ts`, `mobile/src/screens/SettingsScreen.tsx`
+- **Changes:**
+  - In `meraAuth.ts`: Implement `exportWalletCredentials()` returning `{ privateKey, seedPhrase, address }`.
+  - In `SettingsScreen.tsx`: Add a protected "Vault Backup & Security" section with reveal toggle, copy private key, and 24-word recovery phrase grid.
 
 ---
 
-## 4. Data Flow Impact
-- `useAppStore.setActiveTab`: Switches visible tab container without unmounting components.
-- `strategyEngine.executeOpenHedge`: Returns un-truncated floating point `entryPrice`.
-- `PortfolioScreen`: Net worth displays true financial balance ($1,000.00 for $1,000.00 deposit).
-- `useActivity`: Cached entries render in <10ms; network updates merge seamlessly.
-- Monadscan links: Always navigate to verified onchain records on Monad Testnet.
-
----
-
-## 5. Constraints, Risks, and Assumptions
-- **Hermes / Expo Go Compatibility:** Must not introduce native libraries requiring new builds.
-- **Monad Testnet Gas & Contracts:** Must preserve all Monad testnet and dual-leg execution parameters.
-- **Rule 1 Enforcement:** Every logical step will be validated and committed with atomic, descriptive git commits.
+## 4. Verification & Testing Strategy
+1. **Typechecking:** Run `npx tsc --noEmit` across both `mobile` and `backend`.
+2. **Crash Verification:** Validate that `PortfolioScreen` renders flawlessly with zero Hermes exceptions when positions are opened or idle.
+3. **Logo Verification:** Verify that all AUSD icons display the authentic Agora logo.
+4. **Onboarding & Unlock Flow:** Verify that first-time users see `WelcomeScreen` and subsequent launches go straight to `UnlockScreen`.
+5. **Persistence Verification:** Verify that testnet AUSD balances and active positions persist across app restarts and reloads.
+6. **Key Export Verification:** Verify that the EVM private key and 24-word seed phrase are correctly generated and copyable.
+7. **Git Commit:** Commit all verified changes atomically per Rule 1.

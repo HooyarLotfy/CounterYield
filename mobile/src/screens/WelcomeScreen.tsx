@@ -74,7 +74,8 @@ export const WelcomeScreen: React.FC = () => {
     };
   }, [webcamStream]);
 
-  const handleLaunchVault = () => {
+  const handleLaunchVault = async () => {
+    await MeraAuthService.setCompletedOnboarding(true);
     authenticate(vaultAddress);
   };
 
@@ -86,6 +87,7 @@ export const WelcomeScreen: React.FC = () => {
         `Enroll ${capabilities.label} for CounterYield`
       );
       if (result.success && result.address) {
+        await MeraAuthService.setCompletedOnboarding(true);
         authenticate(result.address);
       } else {
         setAuthError(result.error || "Biometric authentication cancelled.");

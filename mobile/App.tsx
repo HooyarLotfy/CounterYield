@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, StatusBar, Platform, ScrollView } from "react-native";
 import { useAppStore } from "./src/state/store";
 import { WelcomeScreen } from "./src/screens/WelcomeScreen";
+import { UnlockScreen } from "./src/screens/UnlockScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { StartEarningScreen } from "./src/screens/StartEarningScreen";
 import { PositionScreen } from "./src/screens/PositionScreen";
@@ -10,6 +11,7 @@ import { ActivityScreen } from "./src/screens/ActivityScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { BottomTabBar } from "./src/components/BottomTabBar";
 import { UnwindModal } from "./src/components/UnwindModal";
+import { MeraAuthService } from "./src/auth/meraAuth";
 import { colors } from "./src/theme";
 
 class ErrorBoundary extends React.Component<
@@ -51,6 +53,13 @@ class ErrorBoundary extends React.Component<
 
 export default function App() {
   const { isAuthenticated, isRiskGuardModalOpen, activeTab } = useAppStore();
+  const [hasOnboarded, setHasOnboarded] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    MeraAuthService.hasCompletedOnboarding().then((done) => {
+      setHasOnboarded(done);
+    });
+  }, [isAuthenticated]);
 
   return (
     <ErrorBoundary>
@@ -58,7 +67,11 @@ export default function App() {
         <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
         <View style={styles.appContainer}>
           {!isAuthenticated ? (
-            <WelcomeScreen />
+            hasOnboarded ? (
+              <UnlockScreen onResetOnboarding={() => setHasOnboarded(false)} />
+            ) : (
+              <WelcomeScreen />
+            )
           ) : (
             <>
               {isRiskGuardModalOpen ? (

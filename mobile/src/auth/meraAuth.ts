@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Account } from 'viem';
+import { entropyToMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
 import { PrfSecretVault } from './prfVault';
 
 export interface BiometricCapability {
@@ -16,6 +18,12 @@ export interface VaultUnlockResult {
   address?: string;
   apiKeyHex?: string; // 64-char hex Ed25519 private key for Perpl signing
   error?: string;
+}
+
+export interface WalletCredentials {
+  address: string;
+  privateKey: string;
+  seedPhrase: string;
 }
 
 /**
@@ -34,6 +42,7 @@ export interface VaultUnlockResult {
 export class MeraAuthService {
   private static readonly SEED_STORAGE_KEY = 'cy_device_seed_v1';
   private static readonly ADDRESS_STORAGE_KEY = 'cy_wallet_address_v1';
+  private static readonly ONBOARDING_STORAGE_KEY = 'cy_onboarding_completed_v1';
   private static sessionKeyHex: string | null = null;
   private static walletAddress: string | null = null;
 
@@ -269,5 +278,97 @@ export class MeraAuthService {
     this.sessionKeyHex = null;
     PrfSecretVault.lockVault();
     // Note: wallet address is NOT wiped — it's public and needed for display
+  }
+
+  /**
+   * Checks whether the user has already completed the initial educational walkthrough
+   * and created/enrolled an enclave passkey wallet on this device.
+   */
+  public static async hasCompletedOnboarding(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        return localStorage.getItem(this.ONBOARDING_STORAGE_KEY) === 'true';
+      }
+      const SecureStore = this.getSecureStoreModule();
+      if (SecureStore) {
+        const val = await SecureStore.getItemAsync(this.ONBOARDING_STORAGE_KEY);
+        return val === 'true';
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Persists onboarding completion status so returning users are presented
+   * with the 1-tap biometric unlock screen instead of the 3-step intro slides.
+   */
+  public static async setCompletedOnboarding(completed: boolean): Promise<void> {
+    try {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        if (completed) {
+          localStorage.setItem(this.ONBOARDING_STORAGE_KEY, 'true');
+        } else {
+          localStorage.removeItem(this.ONBOARDING_STORAGE_KEY);
+        }
+      } else {
+        const SecureStore = this.getSecureStoreModule();
+        if (SecureStore) {
+          if (completed) {
+            await SecureStore.setItemAsync(this.ONBOARDING_STORAGE_KEY, 'true');
+          } else {
+            await SecureStore.deleteItemAsync(this.ONBOARDING_STORAGE_KEY);
+          }
+        }
+      }
+    } catch {
+      // storage unavailable
+    }
+  }
+
+  /**
+   * Exports the user's Monad testnet wallet credentials:
+   * - 64-character EVM private key (0x...)
+   * - 24-word standard BIP-39 mnemonic recovery phrase
+   * - Public Monad EVM address
+   */
+  public static async exportWalletCredentials(): Promise<WalletCredentials> {
+    const { address, seedHex } = await this.getOrCreateDeviceWallet();
+    const cleanHex = seedHex.replace(/^0x/, '').padStart(64, '0').slice(0, 64);
+
+    // Convert 32-byte hex entropy to byte array for BIP-39 mnemonic
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = parseInt(cleanHex.substr(i * 2, 2), 16);
+    }
+    const seedPhrase = entropyToMnemonic(bytes, wordlist);
+
+    return {
+      address,
+      privateKey: `0x${cleanHex}`,
+      seedPhrase,
+    };
+  }
+
+  /**
+   * Resets the enclave wallet on this device and restarts the onboarding flow.
+   */
+  public static async resetWallet(): Promise<void> {
+    this.sessionKeyHex = null;
+    this.walletAddress = null;
+    await this.setCompletedOnboarding(false);
+    try {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem(this.SEED_STORAGE_KEY);
+        localStorage.removeItem(this.ADDRESS_STORAGE_KEY);
+      } else {
+        const SecureStore = this.getSecureStoreModule();
+        if (SecureStore) {
+          await SecureStore.deleteItemAsync(this.SEED_STORAGE_KEY);
+          await SecureStore.deleteItemAsync(this.ADDRESS_STORAGE_KEY);
+        }
+      }
+    } catch {}
   }
 }

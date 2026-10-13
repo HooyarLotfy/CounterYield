@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAppStore } from "../state/store";
+import { MeraAuthService, WalletCredentials } from "../auth/meraAuth";
 import { colors, radius, space } from "../theme";
 import {
   Shield,
@@ -18,6 +19,13 @@ import {
   Sliders,
   Save,
   Info,
+  Key,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  AlertTriangle,
+  Lock,
 } from "lucide-react-native";
 
 export const SettingsScreen: React.FC = () => {
@@ -30,6 +38,42 @@ export const SettingsScreen: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
+
+  // Vault Backup & Credential Export state
+  const [credentials, setCredentials] = useState<WalletCredentials | null>(null);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedSeed, setCopiedSeed] = useState(false);
+
+  const handleToggleReveal = async () => {
+    if (isRevealed) {
+      setIsRevealed(false);
+      return;
+    }
+    setIsLoadingKeys(true);
+    try {
+      const creds = await MeraAuthService.exportWalletCredentials();
+      setCredentials(creds);
+      setIsRevealed(true);
+    } catch (e) {
+      console.warn("Failed to export credentials:", e);
+    } finally {
+      setIsLoadingKeys(false);
+    }
+  };
+
+  const handleCopyPrivateKey = () => {
+    if (!credentials?.privateKey) return;
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
+  };
+
+  const handleCopySeedPhrase = () => {
+    if (!credentials?.seedPhrase) return;
+    setCopiedSeed(true);
+    setTimeout(() => setCopiedSeed(false), 2000);
+  };
 
   const handleSavePolicy = async () => {
     setIsSaving(true);
@@ -253,6 +297,121 @@ export const SettingsScreen: React.FC = () => {
           )}
         </TouchableOpacity>
 
+        {/* Vault Backup & Recovery Section */}
+        <View style={styles.sectionDivider} />
+
+        <View style={styles.backupHeaderRow}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Key size={18} color={colors.lime} />
+            <Text style={styles.backupSectionTitle}>Vault Backup & Keys</Text>
+          </View>
+          <View style={styles.enclaveBadge}>
+            <Lock size={12} color={colors.lime} />
+            <Text style={styles.enclaveBadgeText}>Mera Enclave</Text>
+          </View>
+        </View>
+
+        <Text style={styles.backupDescription}>
+          Export your 64-character EVM testnet private key and 24-word BIP-39 mnemonic recovery phrase to import your account into MetaMask, Rabby, or Foundry.
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.revealToggleBtn, isRevealed && styles.revealToggleBtnActive]}
+          activeOpacity={0.8}
+          onPress={handleToggleReveal}
+          disabled={isLoadingKeys}
+        >
+          {isLoadingKeys ? (
+            <ActivityIndicator size="small" color={colors.lime} />
+          ) : isRevealed ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <EyeOff size={16} color={colors.textSecondary} />
+              <Text style={styles.revealToggleText}>Hide Vault Credentials</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Eye size={16} color={colors.lime} />
+              <Text style={[styles.revealToggleText, { color: colors.lime }]}>
+                Reveal Private Key & Seed Phrase
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {isRevealed && credentials && (
+          <View style={styles.credentialsContainer}>
+            {/* Warning Banner */}
+            <View style={styles.warningBanner}>
+              <AlertTriangle size={16} color="#F59E0B" />
+              <Text style={styles.warningBannerText}>
+                Never share these credentials. Anyone with your private key or seed phrase has full control over your Monad testnet assets.
+              </Text>
+            </View>
+
+            {/* EVM Private Key Card */}
+            <View style={styles.credentialCard}>
+              <View style={styles.credentialCardHeader}>
+                <Text style={styles.credentialCardLabel}>EVM TESTNET PRIVATE KEY</Text>
+                <TouchableOpacity
+                  style={styles.copyPill}
+                  activeOpacity={0.7}
+                  onPress={handleCopyPrivateKey}
+                >
+                  {copiedKey ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Check size={12} color={colors.lime} />
+                      <Text style={[styles.copyPillText, { color: colors.lime }]}>Copied</Text>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Copy size={12} color={colors.textSecondary} />
+                      <Text style={styles.copyPillText}>Copy Key</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.codeText} selectable>
+                {credentials.privateKey}
+              </Text>
+            </View>
+
+            {/* 24-Word Mnemonic Phrase Card */}
+            <View style={styles.credentialCard}>
+              <View style={styles.credentialCardHeader}>
+                <Text style={styles.credentialCardLabel}>24-WORD BIP-39 RECOVERY PHRASE</Text>
+                <TouchableOpacity
+                  style={styles.copyPill}
+                  activeOpacity={0.7}
+                  onPress={handleCopySeedPhrase}
+                >
+                  {copiedSeed ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Check size={12} color={colors.lime} />
+                      <Text style={[styles.copyPillText, { color: colors.lime }]}>Copied</Text>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Copy size={12} color={colors.textSecondary} />
+                      <Text style={styles.copyPillText}>Copy Phrase</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.mnemonicGrid}>
+                {credentials.seedPhrase.split(" ").map((word, index) => (
+                  <View key={index} style={styles.wordPill}>
+                    <Text style={styles.wordIndex}>
+                      {String(index + 1).padStart(2, "0")}
+                    </Text>
+                    <Text style={styles.wordText}>{word}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
@@ -401,5 +560,158 @@ const styles = StyleSheet.create({
     color: "#0D0E11",
     fontSize: 15,
     fontWeight: "800",
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    marginVertical: 24,
+  },
+  backupHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  backupSectionTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  enclaveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(159, 232, 37, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(159, 232, 37, 0.2)",
+  },
+  enclaveBadgeText: {
+    color: colors.lime,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  backupDescription: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  revealToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(159, 232, 37, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(159, 232, 37, 0.25)",
+    marginBottom: 16,
+  },
+  revealToggleBtnActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  revealToggleText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  credentialsContainer: {
+    gap: 14,
+  },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.25)",
+    padding: 12,
+    borderRadius: radius.md,
+  },
+  warningBannerText: {
+    flex: 1,
+    color: "#FBBF24",
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "500",
+  },
+  credentialCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+  },
+  credentialCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  credentialCardLabel: {
+    color: colors.textTertiary,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  copyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  copyPillText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  codeText: {
+    color: colors.lime,
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    padding: 12,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
+  },
+  mnemonicGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  wordPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    width: "31%",
+  },
+  wordIndex: {
+    color: colors.textTertiary,
+    fontSize: 9,
+    fontWeight: "700",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  wordText: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: "600",
+    flex: 1,
   },
 });

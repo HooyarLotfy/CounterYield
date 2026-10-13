@@ -25,7 +25,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (!res.ok || !body?.success) {
       throw new ApiError(body?.error?.code ?? 'HTTP_ERROR', body?.error?.message ?? `HTTP ${res.status}`, res.status);
     }
-    return body.data as T;
+    return (body.data !== undefined ? body.data : body) as T;
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw new ApiError('NETWORK', 'Cannot reach the Counter Yield backend', 0);

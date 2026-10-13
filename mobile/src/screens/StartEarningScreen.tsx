@@ -18,7 +18,6 @@ import {
   Zap,
   Shield,
   ArrowRight,
-  Clock,
   ChevronLeft,
   CheckCircle2,
 } from "lucide-react-native";
@@ -36,17 +35,7 @@ export const StartEarningScreen: React.FC = () => {
   const spotAlloc = activeCapital / 2;
   const perpAlloc = activeCapital / 2;
 
-  // Round-trip taker fees & carry calculation using live quote
   const apr = quote?.telemetry?.netEstimatedApr ?? (quote ? 0 : 0);
-  const roundTripCost = quote?.telemetry?.roundTripFeePercent
-    ? (numericDeposit * quote.telemetry.roundTripFeePercent) / 100
-    : numericDeposit * 0.002;
-  const dailyCarry = (numericDeposit * apr) / 365;
-  const breakEvenDays = quote?.telemetry?.estimatedBreakEvenDays
-    ? quote.telemetry.estimatedBreakEvenDays.toFixed(1)
-    : dailyCarry > 0
-    ? (roundTripCost / dailyCarry).toFixed(1)
-    : "0.0";
 
   const handleStartEarning = async () => {
     if (numericDeposit <= 0 || !userAddress) return;
@@ -190,32 +179,6 @@ export const StartEarningScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Return & Break-Even Metric Strip */}
-        <View style={styles.estimatorCard}>
-          <View style={styles.estimatorHeader}>
-            <Clock size={15} color={colors.lime} strokeWidth={2.4} />
-            <Text style={styles.estimatorTitle}>Break-Even Estimate</Text>
-          </View>
-
-          <View style={styles.estimatorRow}>
-            <View>
-              <Text style={styles.estimatorLabel}>Est. Fees</Text>
-              <Text style={styles.estimatorValue}>-${roundTripCost.toFixed(2)}</Text>
-            </View>
-            <View style={{ alignItems: "center" }}>
-              <Text style={styles.estimatorLabel}>Daily Carry</Text>
-              <Text style={[styles.estimatorValue, { color: colors.lime }]}>
-                +${dailyCarry.toFixed(2)}/day
-              </Text>
-            </View>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.estimatorLabel}>Break-Even</Text>
-              <Text style={[styles.estimatorValue, { color: colors.lime }]}>
-                {breakEvenDays} Days
-              </Text>
-            </View>
-          </View>
-        </View>
 
         {/* Execution Error Alert */}
         {executionError && (
