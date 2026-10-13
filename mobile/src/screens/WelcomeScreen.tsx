@@ -228,6 +228,15 @@ export const WelcomeScreen: React.FC = () => {
                   </View>
                 </View>
               </View>
+
+              {/* Step 1 Visual Container */}
+              <View style={styles.heroImageContainer}>
+                <Image
+                  source={require("../../assets/onboarding/step1.jpg")}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+              </View>
             </View>
           )}
 
@@ -619,7 +628,7 @@ const styles = StyleSheet.create({
   },
   heroImageContainer: {
     width: "100%",
-    height: 400,
+    height: 267,
     borderRadius: radius.lg,
     overflow: "hidden",
     borderWidth: 1,
