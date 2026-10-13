@@ -36,8 +36,8 @@ export const StartEarningScreen: React.FC = () => {
   const spotAlloc = activeCapital / 2;
   const perpAlloc = activeCapital / 2;
 
-  // Round-trip taker fees & carry calculation using live quote if available
-  const apr = quote?.telemetry?.netEstimatedApr ?? 0.184;
+  // Round-trip taker fees & carry calculation using live quote
+  const apr = quote?.telemetry?.netEstimatedApr ?? (quote ? 0 : 0);
   const roundTripCost = quote?.telemetry?.roundTripFeePercent
     ? (numericDeposit * quote.telemetry.roundTripFeePercent) / 100
     : numericDeposit * 0.002;

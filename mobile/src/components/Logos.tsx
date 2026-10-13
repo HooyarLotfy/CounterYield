@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Image } from 'react-native';
 import Svg, { Path, Circle, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 interface LogoProps {
@@ -10,39 +10,16 @@ interface LogoProps {
 /**
  * Authentic Kuru DEX Logo Mark
  * Kuru is Monad's central limit order book DEX.
- * Vibrant fiery orange/coral faceted geometric icon.
+ * Uses official favicon downloaded directly from kuru.io.
  */
 export const KuruLogo: React.FC<LogoProps> = ({ size = 28, style }) => {
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Defs>
-          <LinearGradient id="kuruGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#FF6B35" />
-            <Stop offset="100%" stopColor="#E63946" />
-          </LinearGradient>
-          <LinearGradient id="kuruFacet" x1="0%" y1="100%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor="#FFA07A" stopOpacity={0.9} />
-            <Stop offset="100%" stopColor="#FF4500" stopOpacity={0.6} />
-          </LinearGradient>
-        </Defs>
-        {/* Background rounded squircle */}
-        <Rect width="40" height="40" rx="11" fill="url(#kuruGrad)" />
-        {/* Geometric Origami K / CLOB order book facets */}
-        <Path
-          d="M13 10H17V30H13V10Z"
-          fill="#FFFFFF"
-        />
-        <Path
-          d="M17 21L26.5 11H31.5L20.8 22.2L17 21Z"
-          fill="#FFFFFF"
-        />
-        <Path
-          d="M19.5 20.8L31.5 29H26L17 22.5L19.5 20.8Z"
-          fill="#FFFFFF"
-        />
-        <Circle cx="28" cy="19.5" r="2.2" fill="url(#kuruFacet)" />
-      </Svg>
+      <Image
+        source={require('../../assets/brands/kuru.png')}
+        style={{ width: size, height: size, borderRadius: size * 0.25 }}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -50,35 +27,29 @@ export const KuruLogo: React.FC<LogoProps> = ({ size = 28, style }) => {
 /**
  * Authentic Perpl DEX Logo Mark
  * Perpl is Monad's native perpetual futures exchange.
- * Vivid purple/violet ribbon infinity diamond.
+ * Uses official geometric 3-pillar glyph from perpl.xyz favicon.
  */
 export const PerplLogo: React.FC<LogoProps> = ({ size = 28, style }) => {
   return (
-    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Defs>
-          <LinearGradient id="perplGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#836EF9" />
-            <Stop offset="100%" stopColor="#5E3FE6" />
-          </LinearGradient>
-          <LinearGradient id="perplNeon" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#00F0FF" />
-            <Stop offset="100%" stopColor="#836EF9" />
-          </LinearGradient>
-        </Defs>
-        {/* Background squircle */}
-        <Rect width="40" height="40" rx="11" fill="url(#perplGrad)" />
-        {/* Perpl Perp Loop / Geometric P Emblem */}
-        <Path
-          d="M14 11H22.5C26.0899 11 29 13.9101 29 17.5C29 21.0899 26.0899 24 22.5 24H18.5V29H14V11Z"
-          fill="#FFFFFF"
-          fillOpacity={0.95}
-        />
-        <Path
-          d="M18.5 15.5V19.5H22C23.1046 19.5 24 18.6046 24 17.5C24 16.3954 23.1046 15.5 22 15.5H18.5Z"
-          fill="#5E3FE6"
-        />
-        <Circle cx="29" cy="27" r="2.5" fill="#00F0FF" />
+    <View
+      style={[
+        {
+          width: size,
+          height: size,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#836EF9',
+          borderRadius: size * 0.25,
+          overflow: 'hidden',
+          padding: size * 0.15,
+        },
+        style,
+      ]}
+    >
+      <Svg width={size * 0.7} height={size * 0.7} viewBox="0 0 32 32" fill="none">
+        <Path d="M9.71373 0H4V31H9.71373V0Z" fill="#FFFFFF" />
+        <Path d="M21.5062 15.4392H15.7925V31H21.5062V15.4392Z" fill="#FFFFFF" />
+        <Path d="M27.2196 0H21.5059V15.4392H27.2196V0Z" fill="#FFFFFF" />
       </Svg>
     </View>
   );

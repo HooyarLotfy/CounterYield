@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Platform,
+  Image,
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { MeraAuthService, BiometricCapability } from "../auth/meraAuth";
@@ -182,7 +183,7 @@ export const WelcomeScreen: React.FC = () => {
               <View style={styles.headerBlock}>
                 <Text style={styles.screenHeading}>How It Works</Text>
                 <Text style={styles.screenSubheading}>
-                  Earn institutional funding yield with zero cryptocurrency price volatility.
+                  Dollar yield. No price bets.
                 </Text>
               </View>
 
@@ -196,8 +197,7 @@ export const WelcomeScreen: React.FC = () => {
                   <View style={styles.cardContent}>
                     <Text style={styles.cardTitle}>Zero Price Exposure</Text>
                     <Text style={styles.cardBody}>
-                      When you deposit, the system buys spot MON and simultaneously opens an equal 1x short hedge.
-                      Whether MON doubles or crashes 80%, your dollar value stays fully protected.
+                      Long spot + equal short. MON moves cancel out.
                     </Text>
                   </View>
                 </View>
@@ -208,9 +208,9 @@ export const WelcomeScreen: React.FC = () => {
                     <TrendingUp size={18} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>Continuous Hourly Yield</Text>
+                    <Text style={styles.cardTitle}>Funding Yield</Text>
                     <Text style={styles.cardBody}>
-                      Leveraged traders on perps exchanges pay an hourly funding fee. CounterYield collects this fee on your behalf 24/7, paying ~18.4% APY directly to your balance.
+                      Perp longs pay shorts hourly. You collect it.
                     </Text>
                   </View>
                 </View>
@@ -221,9 +221,9 @@ export const WelcomeScreen: React.FC = () => {
                     <Shield size={18} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>Automated Liquidation Buffer</Text>
+                    <Text style={styles.cardTitle}>Liquidation Buffer</Text>
                     <Text style={styles.cardBody}>
-                      10% of every deposit stays in liquid AUSD cash. If sudden market spikes occur, the automated Risk Guard absorbs wicks so your position is never liquidated.
+                      10% stays in AUSD to top up margin on spikes.
                     </Text>
                   </View>
                 </View>
@@ -239,7 +239,7 @@ export const WelcomeScreen: React.FC = () => {
               <View style={styles.headerBlock}>
                 <Text style={styles.screenHeading}>The DEXs We Connect To</Text>
                 <Text style={styles.screenSubheading}>
-                  Atomic dual-leg execution across Monad's high-speed DeFi ecosystem.
+                  Two Monad venues, one tap.
                 </Text>
               </View>
 
@@ -258,7 +258,7 @@ export const WelcomeScreen: React.FC = () => {
                       </View>
                     </View>
                     <Text style={styles.cardBody}>
-                      Monad's premier Central Limit Order Book exchange. We execute spot MON buys directly on-chain with tight spreads and institutional depth.
+                      Onchain order book. We buy spot MON here.
                     </Text>
                   </View>
                 </View>
@@ -270,13 +270,13 @@ export const WelcomeScreen: React.FC = () => {
                   </View>
                   <View style={styles.cardContent}>
                     <View style={styles.badgeRow}>
-                      <Text style={styles.cardTitle}>Perpl DEX (Market 64)</Text>
+                      <Text style={styles.cardTitle}>Perpl (Market 64)</Text>
                       <View style={[styles.venueBadge, { backgroundColor: "rgba(131, 110, 249, 0.15)" }]}>
                         <Text style={[styles.venueBadgeText, { color: colors.monadViolet }]}>Perpetuals DEX</Text>
                       </View>
                     </View>
                     <Text style={styles.cardBody}>
-                      Monad's high-speed perpetual futures exchange. We open an exact 1x short hedge via low-gas Immediate-or-Cancel (IOC) orders.
+                      Perp DEX. We open the 1x short here with IOC orders.
                     </Text>
                   </View>
                 </View>
@@ -294,7 +294,7 @@ export const WelcomeScreen: React.FC = () => {
                       </View>
                     </View>
                     <Text style={styles.cardBody}>
-                      Audited onchain contract at 0x9998...f906. Enforces policy caps, margin checks, and cryptographic proof-of-hedge on Monad Testnet.
+                      Non-custodial contract at 0x9998...f906. Records every hedge.
                     </Text>
                   </View>
                 </View>
@@ -310,47 +310,17 @@ export const WelcomeScreen: React.FC = () => {
               <View style={styles.headerBlock}>
                 <Text style={styles.screenHeading}>No Seed Phrases. Real Security.</Text>
                 <Text style={styles.screenSubheading}>
-                  Your vault is secured inside your device's hardware Secure Enclave.
+                  Secured inside your hardware Secure Enclave.
                 </Text>
               </View>
 
-              {/* Webcam Viewfinder OR Security Glyph */}
-              <View style={styles.securityVisualBox}>
-                {Platform.OS === "web" && isWebcamActive ? (
-                  <View style={styles.webcamViewfinder}>
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      style={{
-                        width: 140,
-                        height: 140,
-                        borderRadius: 70,
-                        objectFit: "cover",
-                        transform: "scaleX(-1)",
-                      }}
-                    />
-                    <View style={styles.scanReticle}>
-                      <View style={styles.reticleTopLeft} />
-                      <View style={styles.reticleTopRight} />
-                      <View style={styles.reticleBottomLeft} />
-                      <View style={styles.reticleBottomRight} />
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.securityGlyphOuter}>
-                    <View style={styles.securityGlyphInner}>
-                      {Platform.OS === "web" ? (
-                        <Laptop size={36} color={colors.lime} strokeWidth={2.2} />
-                      ) : capabilities.biometryType === "FACE_ID" ? (
-                        <Eye size={36} color={colors.lime} strokeWidth={2.2} />
-                      ) : (
-                        <Fingerprint size={36} color={colors.lime} strokeWidth={2.2} />
-                      )}
-                    </View>
-                  </View>
-                )}
+              {/* Step 3 Hero Image Container (~400px height, matching card width) */}
+              <View style={styles.heroImageContainer}>
+                <Image
+                  source={require("../../assets/onboarding/step3.jpg")}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
               </View>
 
               {/* Security Explanations */}
@@ -395,24 +365,14 @@ export const WelcomeScreen: React.FC = () => {
         {/* Bottom Navigation Dock */}
         <View style={styles.bottomDock}>
           {step === 1 && (
-            <>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                activeOpacity={0.85}
-                onPress={() => setStep(2)}
-              >
-                <Text style={styles.primaryButtonText}>Next: DEX Integrations</Text>
-                <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                activeOpacity={0.7}
-                onPress={handleLaunchVault}
-              >
-                <Text style={styles.secondaryButtonText}>Quick Launch (Skip to Vault)</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              activeOpacity={0.85}
+              onPress={() => setStep(2)}
+            >
+              <Text style={styles.primaryButtonText}>Next: DEX Integrations</Text>
+              <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
+            </TouchableOpacity>
           )}
 
           {step === 2 && (
@@ -437,66 +397,23 @@ export const WelcomeScreen: React.FC = () => {
           )}
 
           {step === 3 && (
-            <>
-              {Platform.OS === "web" ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    activeOpacity={0.85}
-                    onPress={handleLaunchVault}
-                  >
-                    <Text style={styles.primaryButtonText}>1-Click Launch Vault (Enter App)</Text>
-                    <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    activeOpacity={0.7}
-                    disabled={isAuthenticating}
-                    onPress={startWebcamScan}
-                  >
-                    {isAuthenticating ? (
-                      <ActivityIndicator size="small" color={colors.lime} />
-                    ) : (
-                      <>
-                        <Camera size={16} color={colors.lime} style={{ marginRight: 6 }} />
-                        <Text style={[styles.secondaryButtonText, { color: colors.lime }]}>
-                          Test Laptop Webcam Face ID Scan
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              activeOpacity={0.85}
+              disabled={isAuthenticating}
+              onPress={handleBiometricEnrollment}
+            >
+              {isAuthenticating ? (
+                <ActivityIndicator color={colors.textDark} />
               ) : (
                 <>
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    activeOpacity={0.85}
-                    disabled={isAuthenticating}
-                    onPress={handleBiometricEnrollment}
-                  >
-                    {isAuthenticating ? (
-                      <ActivityIndicator color={colors.textDark} />
-                    ) : (
-                      <>
-                        <Text style={styles.primaryButtonText}>
-                          Enable {capabilities.label} & Launch
-                        </Text>
-                        <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
-                      </>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    activeOpacity={0.7}
-                    onPress={handleLaunchVault}
-                  >
-                    <Text style={styles.secondaryButtonText}>Use Passcode & Enter</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.primaryButtonText}>
+                    Unlock Vault ({capabilities.label})
+                  </Text>
+                  <ArrowRight size={18} color={colors.textDark} strokeWidth={2.4} />
                 </>
               )}
-            </>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -699,6 +616,20 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderLeftWidth: 2,
     borderColor: colors.lime,
+  },
+  heroImageContainer: {
+    width: "100%",
+    height: 400,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.surface,
+    marginVertical: space.md,
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
   },
   reticleTopRight: {
     position: "absolute",

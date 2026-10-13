@@ -183,16 +183,6 @@ export const HomeScreen: React.FC = () => {
               <Text style={styles.emptyCtaText}>Deposit & Open Hedge</Text>
               <ArrowRight size={16} color={colors.textDark} strokeWidth={2.4} />
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.presetButton}
-              activeOpacity={0.7}
-              onPress={loadDemoTestingPreset}
-            >
-              <Text style={styles.presetButtonText}>
-                Load Verified Testnet Position (Judges)
-              </Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.positionsSection}>

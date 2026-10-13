@@ -20,6 +20,8 @@ export const config = {
   envioUrl: process.env.EXPO_PUBLIC_ENVIO_URL || 'http://localhost:8080/v1/graphql',
   /** WebAuthn relying-party id. */
   rpId: process.env.EXPO_PUBLIC_RP_ID || 'counteryield.app',
+  /** Verified Agora AUSD contract address on Monad Testnet */
+  ausdAddress: (process.env.EXPO_PUBLIC_AUSD_ADDRESS || '0xa9012a055bd4e0edff8ce09f960291c09d5322dc') as `0x${string}`,
   /** Deployed CarryLedger address. */
   ledgerAddress: (process.env.EXPO_PUBLIC_LEDGER_ADDRESS || '0x9998a7776edddf2f2ab6ffbb9420e5194a50f906') as `0x${string}`,
   rpcUrl: process.env.EXPO_PUBLIC_MONAD_RPC_URL ?? 'https://testnet-rpc.monad.xyz',

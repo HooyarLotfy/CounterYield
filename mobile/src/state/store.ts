@@ -53,7 +53,7 @@ interface AppStoreState {
  * AUSD contract: from env config or uses known testnet address.
  */
 async function fetchAusdBalance(address: string): Promise<number> {
-  const AUSD_CONTRACT = '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B'; // Monad Testnet AUSD
+  const AUSD_CONTRACT = config.ausdAddress; // Verified Agora AUSD on Monad Testnet
   // ERC-20 balanceOf(address) selector = 0x70a08231
   const data = '0x70a08231000000000000000000000000' + address.replace('0x', '').toLowerCase().padStart(64, '0');
 
@@ -104,11 +104,10 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     // Fetch real AUSD balance after authentication
     fetchAusdBalance(address)
       .then((balance) => {
-        set({ walletBalanceAusd: balance > 0 ? balance : 1000.0, isFetchingBalance: false });
-        // 1000 AUSD fallback for testnet addresses with no real balance
+        set({ walletBalanceAusd: balance, isFetchingBalance: false });
       })
       .catch(() => {
-        set({ walletBalanceAusd: 1000.0, isFetchingBalance: false });
+        set({ walletBalanceAusd: 0.0, isFetchingBalance: false });
       });
   },
 

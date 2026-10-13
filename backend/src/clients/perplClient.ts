@@ -96,9 +96,35 @@ export class PerplClient {
 
   /**
    * Fetches the current ticker and mark price for a given market ID (e.g. 64 for MON).
+   * Pulls from Perpl's live pub context endpoint /v1/pub/context or market ticker.
    */
   async getTicker(marketId: number): Promise<PerplTicker> {
     if (this.tickerOverride) return this.tickerOverride(marketId);
+    try {
+      // 1. Try public context first (always available on Perpl)
+      const res = await axios.get(`${this.apiUrl}/v1/pub/context`, {
+        timeout: 5000,
+      });
+      const markets = res.data?.markets || [];
+      const mkt = markets.find((m: any) => m.id === marketId);
+      if (mkt && mkt.state) {
+        // Price decimals for MON is 5 (mrk: 2426 -> $0.02426 or scaled accordingly)
+        const priceDecimals = mkt.config?.price_decimals ?? 5;
+        const scale = Math.pow(10, priceDecimals);
+        const rawMrk = Number(mkt.state.mrk);
+        const formattedMrk = rawMrk > 1000 ? rawMrk / scale : rawMrk;
+        const fundingRate = Number(mkt.funding?.rate ?? 0);
+        return {
+          mrk: formattedMrk,
+          idx: Number(mkt.funding?.idx ?? rawMrk) / scale,
+          dva: Number(mkt.state.dva ?? 0),
+          fr: fundingRate,
+        };
+      }
+    } catch {
+      // Fall through to specific endpoint
+    }
+
     try {
       const res = await axios.get(`${this.apiUrl}/v1/market-data/${marketId}/ticker`, {
         timeout: 5000,
@@ -107,7 +133,12 @@ export class PerplClient {
       if (!data) {
         throw new Error(`Market ${marketId} not found in ticker response`);
       }
-      return data;
+      return {
+        mrk: Number(data.mrk) / 100000,
+        idx: Number(data.idx || data.mrk) / 100000,
+        dva: Number(data.dva || 0),
+        fr: Number(data.fr || 20),
+      };
     } catch (err) {
       logger.error({ err, marketId }, 'Failed to fetch Perpl ticker');
       throw err;

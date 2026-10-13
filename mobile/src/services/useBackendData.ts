@@ -106,43 +106,8 @@ export function useLiveQuote(amount: number, leverage: number = 1) {
       })
       .catch((err) => {
         if (!isCancelled) {
-          // Backend offline: compute a local mathematical estimate (clearly labeled as estimate)
-          // This is NOT presented as "live" data — UI should show "est." prefix
-          const spotPrice = 10.0; // MON testnet approximate price
-          const perpMarkPrice = 10.0;
-          const spotUsd = amount * 0.45;
-          const spotQuantity = spotUsd / spotPrice;
-          const perpMargin = amount * 0.45;
-          const reserveBuffer = amount * 0.10;
-
-          setQuote({
-            marketId: 'MON',
-            eligible: true,
-            rejectionReason: null,
-            sizing: {
-              totalCapital: amount.toString(),
-              reserveBuffer: reserveBuffer.toFixed(2),
-              spotCapital: spotUsd.toFixed(2),
-              perpMargin: perpMargin.toFixed(2),
-              baseQuantity: spotQuantity.toFixed(2),
-            },
-            telemetry: {
-              perplMarkPrice: perpMarkPrice.toFixed(2),
-              kuruMidPrice: spotPrice.toFixed(2),
-              trailingFundingApr: 0.184, // Historical testnet APR estimate
-              netEstimatedApr: 0.184,
-              roundTripFeePercent: 0.002,
-              estimatedBreakEvenDays: 3.9,
-            },
-            riskLadder: {
-              tier1Price: '14.50',
-              tier2Price: '16.80',
-              tier3EmergencyPrice: '18.20',
-              exchangeLiquidationPrice: '19.50',
-            },
-          });
-          // Set error so UI can show "Estimated (backend offline)" notice
-          setError('BACKEND_OFFLINE');
+          setQuote(null);
+          setError(err.message || 'Quote service unavailable');
         }
       })
       .finally(() => {
