@@ -335,28 +335,30 @@ export const WelcomeScreen: React.FC = () => {
               {/* Security Explanations */}
               <View style={styles.cardList}>
                 <View style={styles.explainCard}>
-                  <View style={styles.cardIconBox}>
-                    <Lock size={18} color={colors.lime} strokeWidth={2.4} />
+                  <View style={styles.cardIconBoxLarge}>
+                    <Lock size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>Hardware-Isolated Passkeys</Text>
-                    <Text style={styles.cardBody}>
-                      Trade-only keys are derived locally via WebAuthn PRF. Keys never leave your device and cannot be stolen or compromised.
+                    <Text style={styles.cardTitle}>Hardware Passkeys</Text>
+                    <Text style={styles.cardBody} numberOfLines={1}>
+                      Keys are created on your device. Never shared.
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.explainCard}>
-                  <View style={styles.cardIconBox}>
-                    <CheckCircle2 size={18} color={colors.lime} strokeWidth={2.4} />
+                  <View style={styles.cardIconBoxLarge}>
+                    <CheckCircle2 size={22} color={colors.lime} strokeWidth={2.4} />
                   </View>
                   <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>Hardware-Derived Monad Account</Text>
-                    <Text style={styles.cardAddress}>
-                      {vaultAddress ? `${vaultAddress.slice(0, 8)}...${vaultAddress.slice(-6)}` : "Deriving keypair..."}
-                    </Text>
-                    <Text style={styles.cardBody}>
-                      Monad Testnet (Chain 10143) · Hardware-isolated key derived deterministically via WebAuthn PRF.
+                    <View style={styles.badgeRow}>
+                      <Text style={styles.cardTitle}>Monad Account</Text>
+                      <Text style={styles.cardAddress}>
+                        {vaultAddress ? `${vaultAddress.slice(0, 6)}...${vaultAddress.slice(-4)}` : "Deriving..."}
+                      </Text>
+                    </View>
+                    <Text style={styles.cardBody} numberOfLines={1}>
+                      Monad Testnet 10143. Trade keys stay in hardware.
                     </Text>
                   </View>
                 </View>
