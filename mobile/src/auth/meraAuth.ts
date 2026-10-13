@@ -1,4 +1,6 @@
 import { Platform } from 'react-native';
+import { privateKeyToAccount } from 'viem/accounts';
+import type { Account } from 'viem';
 import { PrfSecretVault } from './prfVault';
 
 export interface BiometricCapability {
@@ -67,33 +69,13 @@ export class MeraAuthService {
   }
 
   /**
-   * Derives a Monad Ethereum-compatible address from a 32-byte hex seed.
-   * Uses keccak256-style derivation: last 20 bytes of sha256(seed) with 0x prefix.
-   * For production, replace with secp256k1 public key derivation.
+   * Derives a genuine Monad secp256k1 EVM account from a 32-byte hex seed (private key).
+   * Generates a standard Ethereum address with full onchain transaction signing capabilities.
    */
-  private static async deriveAddressFromSeed(seedHex: string): Promise<string> {
-    try {
-      const seedBytes = Uint8Array.from(
-        seedHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-      );
-      let hashBuffer: ArrayBuffer;
-      if (typeof crypto !== 'undefined' && crypto.subtle) {
-        hashBuffer = await crypto.subtle.digest('SHA-256', seedBytes);
-      } else if (typeof window !== 'undefined' && window.crypto?.subtle) {
-        hashBuffer = await window.crypto.subtle.digest('SHA-256', seedBytes);
-      } else {
-        // Fallback: use last 20 bytes of seed directly (still unique)
-        return '0x' + seedHex.slice(-40);
-      }
-      const hashHex = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-      // Take last 40 hex chars (20 bytes) as the address — EVM address format
-      return '0x' + hashHex.slice(-40);
-    } catch {
-      // Last resort: deterministic slice of seed
-      return '0x' + seedHex.slice(-40);
-    }
+  private static deriveAddressFromSeed(seedHex: string): string {
+    const cleanHex = seedHex.replace(/^0x/, '').padStart(64, '0').slice(0, 64);
+    const account = privateKeyToAccount(`0x${cleanHex}` as `0x${string}`);
+    return account.address;
   }
 
   /**
@@ -256,6 +238,13 @@ export class MeraAuthService {
   /** Gets the current active session key hex for Perpl signing. */
   public static getSessionKeyHex(): string | null {
     return this.sessionKeyHex;
+  }
+
+  /** Gets the viem secp256k1 Account instance for direct onchain transaction signing. */
+  public static getAccount(): Account | null {
+    if (!this.sessionKeyHex) return null;
+    const cleanHex = this.sessionKeyHex.replace(/^0x/, '').padStart(64, '0').slice(0, 64);
+    return privateKeyToAccount(`0x${cleanHex}` as `0x${string}`);
   }
 
   /** Gets the current active wallet address. */
