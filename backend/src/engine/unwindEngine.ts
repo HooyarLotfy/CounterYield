@@ -1,8 +1,11 @@
+import { parseUnits } from 'viem';
+import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { perplClient } from '../clients/perplClient.js';
 import { kuruClient } from '../clients/kuruClient.js';
-import { PositionModel } from '@counter-yield/shared';
+import { PositionModel, CarryLedgerABI } from '@counter-yield/shared';
 import { spotExecutors } from './spotExecutor.js';
+import { relayerWalletClient } from '../clients/monadClient.js';
 
 export interface UnwindResult {
   positionId: string;
@@ -52,7 +55,7 @@ export class UnwindEngine {
       throw new Error('Unwind aborted: Perpl short could not be closed; spot leg left untouched');
     }
 
-    // 2. Sell Kuru spot leg through the user-signed executor (slippage widened for a force unwind)
+    // 2. Sell Kuru spot leg through the user-signed or relayer executor
     try {
       const fill = await spotExecutor.sell({ baseQty, maxSlippageBps: 300 });
       logger.info({ positionId: position.positionId, txHash: fill.txHash }, 'Kuru spot leg liquidated');
@@ -67,6 +70,22 @@ export class UnwindEngine {
     const feeFriction = initialDeposit * 0.0018; // ~0.18% round-trip friction
     const realizedPnl = estimatedFunding - feeFriction;
     const totalReturned = initialDeposit + realizedPnl;
+
+    // 4. Anchor closeHedge to CarryLedger on Monad Testnet
+    if (process.env.NODE_ENV !== 'test' && env.CARRY_LEDGER_ADDRESS && env.CARRY_LEDGER_ADDRESS !== '0x0000000000000000000000000000000000000000') {
+      try {
+        const pnlUnits = parseUnits(realizedPnl.toFixed(6), 6);
+        await relayerWalletClient.writeContract({
+          address: env.CARRY_LEDGER_ADDRESS as `0x${string}`,
+          abi: CarryLedgerABI,
+          functionName: 'closeHedge',
+          args: [position.positionId as `0x${string}`, BigInt(pnlUnits), reason],
+        });
+        logger.info({ positionId: position.positionId }, 'CarryLedger.closeHedge confirmed on Monad testnet');
+      } catch (anchorErr) {
+        logger.warn({ anchorErr }, 'CarryLedger closeHedge non-blocking on testnet');
+      }
+    }
 
     return {
       positionId: position.positionId,

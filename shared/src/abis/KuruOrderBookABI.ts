@@ -4,7 +4,7 @@ export const KuruOrderBookABI = [
     name: 'placeAndExecuteMarketBuy',
     stateMutability: 'payable',
     inputs: [
-      { name: 'quoteAmount', type: 'uint256' },
+      { name: 'quoteAmount', type: 'uint96' },
       { name: 'minAmountOut', type: 'uint256' },
       { name: 'isMargin', type: 'bool' },
       { name: 'isFillOrKill', type: 'bool' },
@@ -16,7 +16,7 @@ export const KuruOrderBookABI = [
     name: 'placeAndExecuteMarketSell',
     stateMutability: 'payable',
     inputs: [
-      { name: 'baseAmount', type: 'uint256' },
+      { name: 'baseAmount', type: 'uint96' },
       { name: 'minAmountOut', type: 'uint256' },
       { name: 'isMargin', type: 'bool' },
       { name: 'isFillOrKill', type: 'bool' },

@@ -149,8 +149,22 @@ export class Database {
 
   public setBalance(address: string, amount: number): void {
     if (!this.state.balances) this.state.balances = {};
-    this.state.balances[address.toLowerCase()] = amount;
+    this.state.balances[address.toLowerCase()] = Math.max(0, amount);
     this.persist();
+  }
+
+  public deductBalance(address: string, amount: number): number {
+    const current = this.getBalance(address);
+    const updated = Math.max(0, current - amount);
+    this.setBalance(address, updated);
+    return updated;
+  }
+
+  public creditBalance(address: string, amount: number): number {
+    const current = this.getBalance(address);
+    const updated = current + amount;
+    this.setBalance(address, updated);
+    return updated;
   }
 }
 

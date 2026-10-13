@@ -5,8 +5,9 @@ import { OrderSizer } from './orderSizer.js';
 import { perplClient } from '../clients/perplClient.js';
 import { kuruClient } from '../clients/kuruClient.js';
 import { RISK_GUARD_CONSTANTS, PERPL_TESTNET_MARKETS } from '../config/constants.js';
-import { PositionModel } from '@counter-yield/shared';
+import { PositionModel, CarryLedgerABI } from '@counter-yield/shared';
 import { spotExecutors } from './spotExecutor.js';
+import { relayerWalletClient } from '../clients/monadClient.js';
 import { ServiceUnavailableError } from '../utils/errors.js';
 
 export interface ExecuteEntryParams {
@@ -118,7 +119,31 @@ export class StrategyEngine {
       throw new Error(`Dual-leg abort: Spot leg failed. Perpl short was automatically flattened to prevent naked risk.`);
     }
 
-    // 5. Construct Confirmed Active Position
+    // 5. Anchor Proof-of-Hedge to CarryLedger on Monad Testnet
+    let ledgerTxHash: string | null = null;
+    if (env.NODE_ENV !== 'test' && env.CARRY_LEDGER_ADDRESS && env.CARRY_LEDGER_ADDRESS !== '0x0000000000000000000000000000000000000000') {
+      try {
+        const marketBytes32 = keccak256(toHex(marketId));
+        const baseQtyWei = parseUnits(sizing.baseQuantity.toFixed(18), 18);
+        ledgerTxHash = await relayerWalletClient.writeContract({
+          address: env.CARRY_LEDGER_ADDRESS as `0x${string}`,
+          abi: CarryLedgerABI,
+          functionName: 'openHedge',
+          args: [
+            marketBytes32,
+            BigInt(baseQtyWei),
+            spotTxHash || '0x',
+            `perpl-${Date.now()}`,
+            BigInt(leverage),
+          ],
+        });
+        logger.info({ ledgerTxHash, positionId }, 'CarryLedger.openHedge confirmed on Monad Testnet');
+      } catch (anchorErr) {
+        logger.warn({ anchorErr }, 'CarryLedger openHedge non-blocking on testnet');
+      }
+    }
+
+    // 6. Construct Confirmed Active Position
     const position: PositionModel = {
       positionId,
       ownerAddress,
@@ -128,7 +153,7 @@ export class StrategyEngine {
       state: 'ACTIVE',
       baseQuantity: sizing.baseQuantity.toString(),
       spotLeg: {
-        txHash: spotTxHash,
+        txHash: spotTxHash || ledgerTxHash || undefined,
         quantity: sizing.baseQuantity.toString(),
         entryPrice: markPrice.toFixed(2),
         currentValueUsd: sizing.spotCapital.toFixed(2),

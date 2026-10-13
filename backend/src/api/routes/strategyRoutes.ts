@@ -111,6 +111,9 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         // Save to persistent database
         db.savePosition(position);
 
+        // Deduct deposited capital from available user balance
+        db.deductBalance(body.ownerAddress, body.depositAmount);
+
         return {
           success: true,
           data: position,
@@ -216,6 +219,10 @@ export async function strategyRoutes(fastify: FastifyInstance) {
         // Update position state and persist
         position.state = 'CLOSED';
         db.savePosition(position);
+
+        // Credit returned capital back to user balance
+        const returnedAmount = parseFloat(unwindResult.totalReturnedAusd) || 0;
+        db.creditBalance(position.ownerAddress, returnedAmount);
 
         return {
           success: true,

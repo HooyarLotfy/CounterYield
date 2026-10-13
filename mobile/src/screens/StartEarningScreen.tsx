@@ -29,7 +29,7 @@ export const StartEarningScreen: React.FC = () => {
 
   const numericDeposit = parseFloat(depositAmount) || 0;
   const { quote, isLoading: isQuoteLoading } = useLiveQuote(numericDeposit);
-  const { enterStrategy, isSubmitting } = useStrategyExecution();
+  const { enterStrategy, isSubmitting, executionError } = useStrategyExecution();
 
   const reserveBuffer = numericDeposit * 0.1;
   const activeCapital = numericDeposit - reserveBuffer;
@@ -51,14 +51,16 @@ export const StartEarningScreen: React.FC = () => {
   const handleStartEarning = async () => {
     if (numericDeposit <= 0 || !userAddress) return;
 
-    await enterStrategy({
+    const res = await enterStrategy({
       ownerAddress: userAddress,
       depositAmount: numericDeposit,
       leverage: 1,
       maxSlippageBps: 20,
     });
 
-    setActiveTab("home");
+    if (res?.success) {
+      setActiveTab("portfolio");
+    }
   };
 
   return (
@@ -214,6 +216,15 @@ export const StartEarningScreen: React.FC = () => {
             </View>
           </View>
         </View>
+
+        {/* Execution Error Alert */}
+        {executionError && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText} numberOfLines={2}>
+              {executionError}
+            </Text>
+          </View>
+        )}
 
         {/* 1-Tap Execution CTA */}
         <TouchableOpacity
@@ -461,5 +472,18 @@ const styles = StyleSheet.create({
     color: colors.textDark,
     fontSize: 15,
     fontWeight: "700",
+  },
+  errorBox: {
+    backgroundColor: colors.crimsonSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 95, 82, 0.3)',
+    borderRadius: radius.md,
+    padding: space.md,
+    marginBottom: space.md,
+  },
+  errorText: {
+    color: colors.crimson,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
