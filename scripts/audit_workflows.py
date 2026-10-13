@@ -33,16 +33,16 @@ def log_step(step_num: int, title: str):
     print(f"\n{Colors.CYAN}{Colors.BOLD}[Step {step_num}] {title}{Colors.RESET}")
 
 def log_success(msg: str):
-    print(f"  {Colors.GREEN}✔ {msg}{Colors.RESET}")
+    print(f"  {Colors.GREEN}[PASS] {msg}{Colors.RESET}")
 
 def log_info(msg: str):
-    print(f"  ℹ {msg}")
+    print(f"  [INFO] {msg}")
 
 def log_warn(msg: str):
-    print(f"  {Colors.YELLOW}▲ {msg}{Colors.RESET}")
+    print(f"  {Colors.YELLOW}[WARN] {msg}{Colors.RESET}")
 
 def log_error(msg: str):
-    print(f"  {Colors.RED}✖ {msg}{Colors.RESET}")
+    print(f"  {Colors.RED}[FAIL] {msg}{Colors.RESET}")
 
 def post_json(endpoint: str, data: dict) -> dict:
     url = f"{BASE_URL}{endpoint}"
@@ -93,16 +93,15 @@ def main():
     # -------------------------------------------------------------
     log_step(2, "Checking Dual-Venue Market Telemetry (Kuru Spot + Perpl Perp)")
     try:
-        market_data = get_json("/api/v1/markets/MON-PERP")
-        if market_data.get("success"):
-            data = market_data.get("data", {})
-            mid = data.get("kuruMidPrice")
-            perpl_mark = data.get("perplMarkPrice")
-            funding_apr = data.get("annualizedFundingApr")
-            log_success(f"Live Market Ingested: Spot={mid} | PerpMark={perpl_mark} | FundingAPR={funding_apr}%")
+        quote_data = get_json("/api/v1/market/quote?amount=1000")
+        if quote_data.get("success"):
+            data = quote_data.get("data", {})
+            sizing = data.get("sizing", {})
+            telemetry = data.get("telemetry", {})
+            log_success(f"Live Market Ingested: Spot={telemetry.get('kuruMidPrice')} | Mark={telemetry.get('perplMarkPrice')} | APR={telemetry.get('annualizedFundingApr')}%")
             audit_results.append(("Market Telemetry", True))
         else:
-            log_warn(f"Market query returned success=false: {market_data}")
+            log_warn(f"Market quote returned success=false: {quote_data}")
             audit_results.append(("Market Telemetry", False))
     except Exception as e:
         log_error(f"Failed to query market telemetry: {e}")
@@ -115,8 +114,8 @@ def main():
     try:
         faucet_res = post_json("/api/v1/faucet/claim", {"recipientAddress": test_user_address})
         if faucet_res.get("success"):
-            balance = faucet_res.get("data", {}).get("newBalanceAusd")
-            gas_status = faucet_res.get("data", {}).get("gasSponsorshipStatus")
+            balance = faucet_res.get("totalBalanceAusd")
+            gas_status = "Sponsored" if faucet_res.get("gasSponsored") else "Sufficient Gas / Offline"
             log_success(f"Faucet Dispensed: AUSD Balance = ${balance:,.2f} | Gas Status: {gas_status}")
             audit_results.append(("1-Tap Faucet Claim", True))
         else:
@@ -158,7 +157,7 @@ def main():
     try:
         enter_res = post_json("/api/v1/strategy/enter", {
             "ownerAddress": test_user_address,
-            "marketId": 64,
+            "marketId": "MON",
             "depositAmount": 500.0,
             "leverage": 1,
             "maxSlippageBps": 50,
@@ -185,7 +184,6 @@ def main():
     log_step(6, "Simulating Risk Guard Fire Drill (+25% Flash Wick)")
     try:
         drill_res = post_json("/api/v1/risk/fire-drill", {
-            "positionId": created_position_id,
             "targetTier": 1,
             "simulatedDropPercent": 25
         })
