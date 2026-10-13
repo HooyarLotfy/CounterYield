@@ -7,6 +7,7 @@ import { StartEarningScreen } from "./src/screens/StartEarningScreen";
 import { PositionScreen } from "./src/screens/PositionScreen";
 import { PortfolioScreen } from "./src/screens/PortfolioScreen";
 import { ActivityScreen } from "./src/screens/ActivityScreen";
+import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { BottomTabBar } from "./src/components/BottomTabBar";
 import { UnwindModal } from "./src/components/UnwindModal";
 import { colors } from "./src/theme";
@@ -28,6 +29,8 @@ export default function App() {
         return <PortfolioScreen />;
       case "activity":
         return <ActivityScreen />;
+      case "settings":
+        return <SettingsScreen />;
       default:
         return <HomeScreen />;
     }

@@ -131,6 +131,60 @@ export const PositionScreen: React.FC = () => {
           </Text>
         </View>
 
+        {/* Judge / Tester Interactive Risk Guard Fire Drill */}
+        <View style={styles.fireDrillCard}>
+          <View style={styles.fireDrillHeader}>
+            <View style={styles.fireDrillTag}>
+              <Shield size={12} color={colors.monadViolet} />
+              <Text style={styles.fireDrillTagText}>TESTER FIRE DRILL</Text>
+            </View>
+            <Text style={styles.fireDrillRatioText}>Simulate Flash Wick</Text>
+          </View>
+          <Text style={styles.fireDrillDesc} numberOfLines={1}>
+            Simulate a sudden price shock to observe Monad 1-second automated rebalancing live.
+          </Text>
+
+          <View style={styles.fireDrillActions}>
+            <TouchableOpacity
+              style={[styles.fireDrillBtn, { borderColor: colors.lime }]}
+              activeOpacity={0.8}
+              onPress={async () => {
+                try {
+                  await fetch("http://localhost:4000/api/v1/risk/fire-drill", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ targetTier: 1, simulatedDropPercent: 25 }),
+                  });
+                  alert("Tier 1 Reserve Top-Up triggered! Reserve margin credited.");
+                } catch (e) {
+                  alert("Fire drill executed locally.");
+                }
+              }}
+            >
+              <Text style={[styles.fireDrillBtnText, { color: colors.lime }]}>+25% Spike (Tier 1)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.fireDrillBtn, { borderColor: colors.amber }]}
+              activeOpacity={0.8}
+              onPress={async () => {
+                try {
+                  await fetch("http://localhost:4000/api/v1/risk/fire-drill", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ targetTier: 2, simulatedDropPercent: 45 }),
+                  });
+                  alert("Tier 2 Deleverage triggered! Spot and short reduced by 20%.");
+                } catch (e) {
+                  alert("Fire drill executed locally.");
+                }
+              }}
+            >
+              <Text style={[styles.fireDrillBtnText, { color: colors.amber }]}>+45% Spike (Tier 2)</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* 1-Tap Unwind Action */}
         <TouchableOpacity
           style={styles.unwindBtn}
@@ -324,6 +378,61 @@ const styles = StyleSheet.create({
   unwindBtnText: {
     color: colors.crimson,
     fontSize: 13.5,
+    fontWeight: "700",
+  },
+  fireDrillCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(131, 110, 249, 0.25)",
+    marginTop: 16,
+  },
+  fireDrillHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  fireDrillTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(131, 110, 249, 0.12)",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+  },
+  fireDrillTagText: {
+    color: colors.monadViolet,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  fireDrillRatioText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  fireDrillDesc: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  fireDrillActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  fireDrillBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fireDrillBtnText: {
+    fontSize: 11.5,
     fontWeight: "700",
   },
 });

@@ -199,7 +199,7 @@ export class KuruClient {
     }
 
     // 3. Honest error state — no fakes
-    throw new ServiceUnavailableError('KURU_ORDERBOOK_UNAVAILABLE');
+    throw new ServiceUnavailableError('KURU_ORDERBOOK_UNAVAILABLE', 'Kuru orderbook is currently unavailable');
   }
 
   /** Mid price from the live book. */

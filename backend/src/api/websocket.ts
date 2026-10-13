@@ -46,7 +46,7 @@ export async function websocketGateway(fastify: FastifyInstance) {
                     markPrice: ticker.mrk,
                     fundingRate: ticker.fr,
                     annualizedApr: (ticker.fr * 24 * 365) / 1_000_000,
-                    timestamp: ticker.at,
+                    timestamp: Date.now(),
                   }
                 : null,
               timestamp: Date.now(),
