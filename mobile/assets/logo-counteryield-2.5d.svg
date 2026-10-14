@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <!-- Matte Charcoal Container Background Gradient -->
+    <radialGradient id="cyCanvasBg" cx="50%" cy="40%" r="75%" fx="50%" fy="35%">
+      <stop offset="0%" stop-color="#242424" />
+      <stop offset="60%" stop-color="#181818" />
+      <stop offset="100%" stop-color="#111111" />
+    </radialGradient>
+
+    <!-- Calibrated Lime 2.5D Shading Gradients -->
+    <!-- Left Shield Facet (Lit Face) -->
+    <linearGradient id="limeFacetLit" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#B2F23E" />
+      <stop offset="60%" stop-color="#9FE825" />
+      <stop offset="100%" stop-color="#84CE1D" />
+    </linearGradient>
+
+    <!-- Right Shield Facet (Shaded Face) -->
+    <linearGradient id="limeFacetShaded" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#84CE1D" />
+      <stop offset="50%" stop-color="#72B718" />
+      <stop offset="100%" stop-color="#5B9410" />
+    </linearGradient>
+
+    <!-- Inner Shield Chamfer Depth Gradients -->
+    <linearGradient id="limeInnerChamfer" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6DAF16" />
+      <stop offset="100%" stop-color="#4B7C0C" />
+    </linearGradient>
+
+    <!-- Dark Titanium / Obsidian Blade (Lit Left) -->
+    <linearGradient id="titaniumBladeLit" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E2E8F0" />
+      <stop offset="35%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+
+    <!-- Obsidian Blade (Shaded Right) -->
+    <linearGradient id="obsidianBladeShadow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="65%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+
+    <!-- Crossguard Metallic Gradient -->
+    <linearGradient id="crossguardMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#64748B" />
+      <stop offset="50%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Grip Dark Texture Gradient -->
+    <linearGradient id="gripLit" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+
+    <linearGradient id="gripShaded" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Monad Violet Center Medallion Accent -->
+    <linearGradient id="monadCore" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9F8DFF" />
+      <stop offset="100%" stop-color="#836EF9" />
+    </linearGradient>
+
+    <!-- Subtle Natural 2.5D Drop Shadow (No heavy muddy blur) -->
+    <filter id="naturalDepth25D" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="14" flood-color="#000000" flood-opacity="0.45" />
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+
+    <!-- Soft Green Ambient Floor Glow -->
+    <filter id="subtleLimeBloom" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+    </filter>
+  </defs>
+
+  <!-- Deep Matte Charcoal Container (Matches #131313 / #1F1F1F theme) -->
+  <rect width="1000" height="1000" fill="url(#cyCanvasBg)" rx="180" />
+  
+  <!-- Subtle inner border for premium tactile enclosure -->
+  <rect x="12" y="12" width="976" height="976" rx="172" fill="none" stroke="rgba(255, 255, 255, 0.07)" stroke-width="3" />
+
+  <!-- Soft 2.5D Ambient Underglow from the Shield -->
+  <ellipse cx="500" cy="590" rx="260" ry="220" fill="#9FE825" opacity="0.08" filter="url(#subtleLimeBloom)" />
+
+  <!-- MAIN 2.5D EMBLEM -->
+  <g filter="url(#naturalDepth25D)">
+
+    <!-- ======================================================== -->
+    <!-- 2.5D MINIMALIST SHIELD (Calibrated Lime & Precise Facets) -->
+    <!-- ======================================================== -->
+    <g id="shield-2.5d">
+      
+      <!-- LEFT SHIELD HALF (Lit Face) -->
+      <!-- Outer main wing facet -->
+      <polygon points="440,380 260,416 306,718 436,794 440,794 440,380" fill="url(#limeFacetLit)" />
+      
+      <!-- Inner chiseled chamfer facet (creates clean 2.5D bevel without heavy clutter) -->
+      <polygon points="440,405 288,435 328,700 436,766 440,766 440,405" fill="url(#limeInnerChamfer)" opacity="0.4" />
+      
+      <!-- Razor-sharp top ridge highlight line -->
+      <polyline points="440,380 260,416 306,718 436,794" fill="none" stroke="#D9F99D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+
+
+      <!-- RIGHT SHIELD HALF (Shaded Face) -->
+      <!-- Outer main wing facet -->
+      <polygon points="560,380 740,416 694,718 564,794 560,794 560,380" fill="url(#limeFacetShaded)" />
+      
+      <!-- Inner chiseled chamfer facet -->
+      <polygon points="560,405 712,435 672,700 564,766 560,766 560,405" fill="url(#limeInnerChamfer)" opacity="0.65" />
+      
+      <!-- Right edge highlight line (subtle) -->
+      <polyline points="560,380 740,416 694,718 564,794" fill="none" stroke="#9FE825" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.45" />
+
+    </g>
+
+    <!-- ======================================================== -->
+    <!-- 2.5D MINIMALIST OBSIDIAN SWORD                           -->
+    <!-- ======================================================== -->
+    <g id="sword-2.5d">
+
+      <!-- 1. POMMEL (Geometric faceted cap) -->
+      <g id="pommel">
+        <!-- Base block -->
+        <polygon points="472,138 500,138 500,160 472,160" fill="#64748B" />
+        <polygon points="500,138 528,138 528,160 500,160" fill="#1E293B" />
+        <!-- Top bevel reflection -->
+        <line x1="472" y1="138" x2="528" y2="138" stroke="#E2E8F0" stroke-width="2" opacity="0.75" />
+      </g>
+
+      <!-- 2. GRIP (Slender dual-facet column) -->
+      <g id="grip">
+        <!-- Lit side -->
+        <polygon points="482,160 500,160 500,284 482,284" fill="url(#gripLit)" />
+        <!-- Shaded side -->
+        <polygon points="500,160 518,160 518,284 500,284" fill="url(#gripShaded)" />
+        <!-- Subtle center ridge -->
+        <line x1="500" y1="160" x2="500" y2="284" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" />
+      </g>
+
+      <!-- 3. CROSSGUARD (Sleek horizontal wing with clean bevels) -->
+      <g id="crossguard">
+        <!-- Main crossguard bar: Left half (lit) -->
+        <polygon points="370,304 500,296 500,326 370,318" fill="url(#crossguardMetal)" />
+        <!-- Main crossguard bar: Right half (shadow) -->
+        <polygon points="500,296 630,304 630,318 500,326" fill="#0F172A" />
+
+        <!-- Crossguard top specular edge -->
+        <line x1="370" y1="304" x2="500" y2="296" stroke="#CBD5E1" stroke-width="2" opacity="0.85" />
+        <line x1="500" y1="296" x2="630" y2="304" stroke="#64748B" stroke-width="1.5" opacity="0.6" />
+
+        <!-- Center Diamond Monad Emblem Medallion -->
+        <polygon points="500,298 514,311 500,324 486,311" fill="url(#monadCore)" stroke="#C4B5FD" stroke-width="1.5" />
+      </g>
+
+      <!-- 4. BLADE (Diamond cross-section, sharp central ridge) -->
+      <g id="blade">
+        <!-- Left Blade Face (Lit Titanium / Slate) -->
+        <polygon points="472,328 500,328 500,880 472,328" fill="url(#titaniumBladeLit)" />
+        
+        <!-- Right Blade Face (Deep Obsidian Shadow) -->
+        <polygon points="500,328 528,328 500,880 500,328" fill="url(#obsidianBladeShadow)" />
+
+        <!-- Recessed Minimalist Bloodline Channel (Upper Half Only) -->
+        <polygon points="496,336 500,336 500,640 496,640" fill="#0A0E17" opacity="0.8" />
+        <polygon points="500,336 504,336 504,640 500,640" fill="#1E293B" opacity="0.6" />
+
+        <!-- Sharp 2.5D Central Blade Spine Line (Top to Tip) -->
+        <line x1="500" y1="328" x2="500" y2="880" stroke="#FFFFFF" stroke-width="1.8" opacity="0.9" />
+
+        <!-- Left Outer Cutting Edge Specular Highlight -->
+        <line x1="472" y1="328" x2="500" y2="880" stroke="#94A3B8" stroke-width="1.2" opacity="0.6" />
+      </g>
+
+    </g>
+
+  </g>
+</svg>

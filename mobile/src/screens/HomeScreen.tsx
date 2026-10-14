@@ -215,9 +215,9 @@ export const HomeScreen: React.FC = () => {
               <Sparkles size={22} color={colors.lime} strokeWidth={2.2} />
             </View>
 
-            <Text style={styles.emptyTitle}>Automated Dollar Carry</Text>
+            <Text style={styles.emptyTitle}>Dollar Carry Strategy</Text>
             <Text style={styles.emptySubtitle}>
-              Earn funding rates by pairing Kuru spot long with Perpl 1x short hedge.
+              Earn high funding yields with zero price exposure.
             </Text>
 
             <TouchableOpacity
@@ -225,14 +225,14 @@ export const HomeScreen: React.FC = () => {
               activeOpacity={0.85}
               onPress={() => setActiveTab("earn")}
             >
-              <Text style={styles.emptyCtaText}>Deposit & Open Hedge</Text>
+              <Text style={styles.emptyCtaText}>Deposit to Start Earning</Text>
               <ArrowRight size={16} color={colors.textDark} strokeWidth={2.4} />
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.positionsSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Dual-Leg Capital Allocation</Text>
+              <Text style={styles.sectionTitle}>Asset Allocation</Text>
               <View style={styles.proofBadge}>
                 <Lock size={10} color={colors.lime} strokeWidth={2.4} />
                 <Text style={styles.proofBadgeText}>CarryLedger Audited</Text>

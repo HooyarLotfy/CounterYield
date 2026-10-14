@@ -1,155 +1,111 @@
-# Implementation Plan: Production VPS Deployment, Android APK Packaging & Late-2026 In-App Auto-Update Architecture
+# Implementation Plan: Mobile Polish, Status Bar Fix, Icon Update & Android Navigation
 
-**Target Server:** Qmas VPS (`153.75.248.37`)  
-**Target Path:** `/var/www/counteryield-backend/`  
-**Dedicated Port:** `48392` (Random High Port — Verified Conflict-Free)  
-**Date:** 2026-10-14  
-**Author:** Antigravity Senior Full-Stack Engineer  
+## 1. Current State Analysis & Identified Flaws
 
----
+### Flaw 1: Status Bar Overlap (Top Body Content Collision)
+- **Current Behavior**: The top area of the application renders directly under the Android notification bar and status bar clock/battery/wifi icons.
+- **Root Cause**: `mobile/android/app/src/main/res/values/styles.xml` sets `<item name="android:statusBarColor">@android:color/transparent</item>`, forcing edge-to-edge drawing. Standard React Native `SafeAreaView` only handles iOS home indicators and notches—on Android, it produces `0` padding by default. `App.tsx` lacks `paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0`.
+- **Target Fix**: Set `android:statusBarColor` to `#0D0E11` in `styles.xml`, set `translucent={false}` on `StatusBar` in `App.tsx`, and ensure safe top spacing so top navigation/header never collides with status bar indicators.
 
-## 1. Architectural Deep-Dive & Correction: Why WebViews are Dead & How Modern Native Self-Updates Work
+### Flaw 2: Check Updates Button Layout Collision in Settings
+- **Current Behavior**: In `SettingsScreen.tsx`, `versionCardHeader` aligns version information and `checkUpdateBtn` horizontally. On typical mobile screen widths, the button overflows horizontally and gets truncated. Furthermore, the bottom spacer is only `60px`, leaving the card partially hidden underneath the persistent bottom navigation bar.
+- **Target Fix**: Redesign `versionCard` into a clean vertical stack with version metadata on top, a full-width "Check for Updates" button below, and increase bottom scroll padding to `130px`.
 
-### 1.1 The User's Concern & Critique of WebViews
-> *"What if we update the project? The application needs to auto-download the new package without the Google Play Store... but I don't want a webview mobile app that feels unnatural."*
+### Flaw 3: White Background / Gray Icon Flash & Launch Intro Modal Flash
+- **Part A (White Flash / Gray Icon)**:
+  - **Root Cause**: `mobile/android/app/src/main/res/values/colors.xml` sets `<color name="splashscreen_background">#FFFFFF</color>`. `AppTheme` in `styles.xml` does not set `android:windowBackground`, defaulting to white during Android Activity draw cycles and tab toggles (`display: 'none'` to `'flex'`).
+  - **Target Fix**: Set `splashscreen_background` to `#0D0E11`, add `<item name="android:windowBackground">#0D0E11</item>` to `AppTheme`, and ensure seamless dark backgrounds across all tab wrappers.
+- **Part B (Intro Modal Flash on Launch)**:
+  - **Root Cause**: In `App.tsx`, `hasOnboarded` initializes as `null`. The unauthenticated render condition `hasOnboarded ? <UnlockScreen /> : <WelcomeScreen />` treats `null` as falsy, rendering `<WelcomeScreen />` for ~200-500ms while `MeraAuthService.hasCompletedOnboarding()` reads storage, before suddenly swapping to `<UnlockScreen />`.
+  - **Target Fix**: If `hasOnboarded === null`, render an intentional dark loader view (`<View style={{ flex: 1, backgroundColor: colors.bg }} />`), preventing `<WelcomeScreen />` from ever flashing for existing wallet holders.
 
-**Your intuition is 100% correct.** Converting this project to a WebView or PWA wrapper in late 2026 is an extreme anti-pattern for institutional DeFi:
-1. **Broken Hardware Passkey Enclave:** WebViews on Android run inside sandboxed Chromium renderers that cannot access hardware-isolated Android BiometricPrompt / WebAuthn PRF extensions needed for `@category-labs/mera` session keys.
-2. **Latency & Micro-stutters:** A WebView struggles to render live orderbook websockets and 120Hz gesture animations smoothly. CounterYield is built on React Native with Hermes AOT bytecode and native Reanimated threads.
-3. **The Solution:** Keep the app **100% Native React Native** while implementing a **Dual-Layer Auto-Update System**.
+### Flaw 4: Outdated Android Launcher Icon
+- **Current Behavior**: The launcher icon outside the app uses default boilerplate assets.
+- **Target Fix**: Rasterize `E:\CounterYield Landing Page\public\images\logo-counteryield-2.5d.svg` (copied to `mobile/assets/logo-counteryield-2.5d.svg`) via Microsoft Edge headless high-DPI rendering and PIL Lanczos downsampling into all Android mipmap densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) for both square and round adaptive icons.
 
----
+### Flaw 5: Android Hardware Back Button Exits App Unconditionally
+- **Current Behavior**: Tapping Android's back button or using the back swipe gesture terminates the application immediately from any tab or modal.
+- **Target Fix**: Wire `BackHandler` in `App.tsx`:
+  - If `isRiskGuardModalOpen`: close modal (`openRiskGuardModal(false)`).
+  - Else if `activeTab !== 'home'`: return to `'home'`.
+  - Else: allow default system exit.
 
-### 1.2 The Late-2026 Native Sideloading Architecture (Dual-Layer)
+### Flaw 6: Biometric Button Copy ("Face ID" Hardcoded)
+- **Current Behavior**: `UnlockScreen.tsx` displays "Unlock with Touch ID / Face ID" or device-dependent labels that look out of place on Android.
+- **Target Fix**: Simplify the primary action button copy to **"Enter App"** (or **"Enter"**), keeping biometric hardware detection seamless in the background.
 
-Modern Web3 mobile apps distributed outside Google Play Store (e.g., Uniswap Wallet APK, Phantom APK, Telegram client APKs) operate on two synchronized layers:
-
-```mermaid
-flowchart TD
-    AppLaunch[App Launch / Resume] --> CheckUpdate[Check Version / OTA Hash]
-    CheckUpdate --> HasOTA{JS/UI Change Only?}
-    HasOTA -- Yes (99% of updates) --> OTADownload[Silent Background Download: expo-updates]
-    OTADownload --> ApplyOTA[Instant Hot-Swap on Next Boot - 0 Reinstall]
-    HasOTA -- No (Native binary changed) --> VersionAPI[Query GET /api/v1/app/version]
-    VersionAPI --> HasNewAPK{remoteVersion > localVersion?}
-    HasNewAPK -- Yes --> PromptModal[Show In-App Native Update Modal]
-    PromptModal -- Tap Update --> DownloadAPK[Download APK via expo-file-system]
-    DownloadAPK --> LaunchInstaller[Trigger Intent.ACTION_VIEW via expo-intent-launcher]
-    LaunchInstaller --> AndroidPrompt[Android System Dialog: Update CounterYield?]
-    AndroidPrompt --> Updated[In-Place Native Update - Keep All Keys & State]
-```
-
-#### Layer 1: Real-Time OTA (Over-The-Air) JavaScript Updates (99% of Updates)
-- Every time screens, styles, APY math, risk guard logic, or endpoints change, **users DO NOT need to reinstall an APK**.
-- In React Native, the entire UI and business logic resides in an encrypted Hermes bytecode bundle (`index.android.bundle`).
-- Using **`expo-updates`**, the app silently fetches the new JS bundle on launch and swaps it in volatile memory. It feels like an instant web deployment, but runs on 100% native bare-metal hardware.
-
-#### Layer 2: In-App Native APK Self-Installer (1% of Updates — Native Binary Changes)
-- For native SDK updates or new Android permissions, the app includes an in-app updater:
-  1. The backend exposes `GET /api/v1/app/version`:
-     ```json
-     {
-       "versionCode": 2,
-       "versionName": "1.1.0",
-       "minSupportedVersion": 1,
-       "apkUrl": "http://153.75.248.37:48392/downloads/counteryield-v1.1.0.apk",
-       "changelog": "High-throughput Monad RPC updates and low-latency hedge engine."
-     }
-     ```
-  2. The mobile app compares `remoteVersionCode > Constants.expoConfig.android.versionCode`.
-  3. If higher, it displays a sleek native bottom sheet: *"Update Available (v1.1.0) — [Download & Install]"*.
-  4. With 1 tap, `expo-file-system` downloads the APK with an animated progress bar to the app cache.
-  5. `expo-intent-launcher` launches `android.intent.action.VIEW` with MIME type `application/vnd.android.package-archive` and `FLAG_GRANT_READ_URI_PERMISSION`.
-  6. Android's native package installer immediately prompts: *"Update CounterYield? All app data, biometric keys, and positions will be preserved."*
-  7. The user taps "Update", and the phone updates in-place without opening a browser or Play Store!
+### Flaw 7: Wordy & Over-Technical UI Copy
+- **Current Behavior**: Technical parameters like "Dual-Leg Slippage Tolerance 50 bps (0.50%)\nMaximum execution variance across Kuru spot and ...", "Annualized Funding Floor", and lengthy enclave descriptions wrap awkwardly and truncate into "y...".
+- **Target Fix**: Replace with clean, human-readable microcopy inspired by Uniswap and Phantom (e.g., "Slippage Tolerance", "Min Funding Rate", "Leverage Cap", "Safety Reserve", "Backup Secret Keys", "Save Settings").
 
 ---
 
-## 2. Infrastructure Architecture: Qmas Server (`153.75.248.37`)
-
-### 2.1 Server State & Port Selection
-- **Active Ports Inspected:**
-  - `3000-3006` (PM2 next-server / node apps)
-  - `5432` (PostgreSQL), `6379` (Redis), `3306` (MySQL)
-  - `8000, 8002, 8051` (Python / FastAPI)
-  - `40000` (warp-svc)
-- **Selected Random Port:** **`48392`**
-  - High range (`40000+`), completely free and unallocated.
-  - Zero chance of port collisions with any existing or future PM2 apps.
-
-### 2.2 Low-Latency Tuning on VPS
-- **Fastify HTTP Engine:**
-  - Sub-millisecond JSON parsing.
-  - Set `keepAliveTimeout: 65000` and HTTP pipelining enabled.
-  - Enforce `socket.setNoDelay(true)` to disable Nagle's algorithm for instant TCP packet delivery.
-- **PM2 Configuration (`ecosystem.config.cjs`):**
-  - Name: `counteryield-backend`
-  - Mode: `fork` (single low-overhead worker thread avoiding IPC jitter)
-  - Memory limit: `max_memory_restart: '1024M'`
-  - Node flags: `--max-old-space-size=1024 --expose-gc`
-  - Auto-restart on crash with exponential backoff.
-- **Static APK File Distribution:**
-  - Serve `/downloads/` via Fastify `@fastify/static` with stream compression and resumable chunk headers.
+## 2. Tech Stack & Architecture Overview
+- **Mobile Runtime**: React Native 0.86, Expo 57, Hermes Engine, Reanimated 4, Lucide Icons.
+- **Native Android**: SDK 34/36, Gradle 9.3, Java 17.
+- **Backend & Relayer**: Node.js/Express on VPS port `48392`, PM2 daemon.
 
 ---
 
 ## 3. Step-by-Step Implementation Plan
 
-### Phase 1: VPS Backend Directory Setup & Code Sync
-1. Connect via SSH to `root@153.75.248.37` using `C:\Users\Hooyar\.ssh\qmas_key`.
-2. Create project directory `/var/www/counteryield-backend` and data folder `/var/www/counteryield-backend/data/`.
-3. Package and upload backend source files, compiled dist, and shared packages via `rsync` or `scp`.
-4. Install production dependencies on the VPS (`npm install --omit=dev`).
-5. Configure `.env` on VPS:
-   - `PORT=48392`
-   - `HOST=0.0.0.0`
-   - `RPC_URL=https://testnet-rpc.monad.xyz`
-   - `CHAIN_ID=10143`
-6. Create `ecosystem.config.cjs` and start process in PM2:
-   ```bash
-   pm2 start ecosystem.config.cjs
-   pm2 save
-   ```
-7. Verify live endpoints on `http://153.75.248.37:48392/api/v1/health`.
+### Step 1: Android Status Bar & Native Window Theme
+- Modify `mobile/android/app/src/main/res/values/styles.xml`:
+  - Set `android:statusBarColor` to `#0D0E11`.
+  - Set `android:windowBackground` to `#0D0E11`.
+- Modify `mobile/android/app/src/main/res/values/colors.xml`:
+  - Change `splashscreen_background` to `#0D0E11`.
+- In `mobile/App.tsx`:
+  - Configure `<StatusBar barStyle="light-content" backgroundColor={colors.bg} translucent={false} />`.
+  - Add safe top padding to `appContainer`: `paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0`.
 
-### Phase 2: In-App Version & APK Distribution Endpoints
-1. Add `versionRoutes.ts` to backend:
-   - `GET /api/v1/app/version` -> returns current release metadata, minimum supported version, download URL, and changelog.
-2. Configure static APK downloads directory `/var/www/counteryield-backend/public/downloads/`.
+### Step 2: Prevent Splash/Modal Race Condition on Launch
+- In `mobile/App.tsx`:
+  - Check `if (hasOnboarded === null)`: return a dark initializing view.
+  - Only show `<WelcomeScreen />` when `hasOnboarded === false`.
+  - Only show `<UnlockScreen />` when `hasOnboarded === true && !isAuthenticated`.
 
-### Phase 3: Implement In-App Native Auto-Updater in Mobile App
-1. Install `expo-intent-launcher` in mobile app.
-2. Configure `app.json`:
-   - `android.permissions: ["REQUEST_INSTALL_PACKAGES"]`
-   - `android.usesCleartextTraffic: true` (allows HTTP to VPS IP during testnet)
-   - `android.versionCode: 1`, `version: "1.0.0"`
-3. Implement `mobile/src/services/useAppUpdater.ts`:
-   - Checks `GET /api/v1/app/version` on launch and app resume.
-   - Triggers `downloadAndInstallApk()` with progress bar.
-4. Implement `mobile/src/components/UpdateModal.tsx`:
-   - Sleek Uniswap-grade modal showing changelog, version badge, download progress bar, and "Install Update" button.
+### Step 3: Implement Android Hardware Back Navigation
+- In `mobile/App.tsx`:
+  - Add `BackHandler.addEventListener('hardwareBackPress', ...)` handling modal closing and tab unwinding to Home.
 
-### Phase 4: Configure Mobile App Remote VPS Endpoint
-1. Update `mobile/src/config/env.ts`:
-   - Set `apiUrl: 'http://153.75.248.37:48392'`.
-2. Verify all API routes (faucet, quotes, orderbook, positions, telemetry) connect to the remote VPS backend.
+### Step 4: Redesign Settings Layout & Update Button
+- In `mobile/src/screens/SettingsScreen.tsx`:
+  - Restructure `versionCard` with vertical stacking so "Check for Updates" is never compressed or truncated.
+  - Set `contentContainerStyle` with `paddingBottom: 130` so the card sits comfortably above `BottomTabBar`.
 
-### Phase 5: Package Standalone Android `.apk`
-1. Build release Android APK:
-   - Generate release keystore or use debug signing for testnet distribution.
-   - Run `npx expo prebuild --platform android` followed by Gradle release assemble:
-     `cd android && ./gradlew assembleRelease` (or `assembleDebug` for fast sideloading).
-2. Upload generated `.apk` to VPS: `/var/www/counteryield-backend/public/downloads/counteryield-v1.0.0.apk`.
-3. Verify public download link from mobile browser or device: `http://153.75.248.37:48392/downloads/counteryield-v1.0.0.apk`.
+### Step 5: Update UnlockScreen Button Copy
+- In `mobile/src/screens/UnlockScreen.tsx`:
+  - Change button label to `"Enter App"`.
 
-### Phase 6: End-to-End Verification & Atomic Commit
-1. Test in-app version check and download flow.
-2. Confirm persistent PM2 status and health check across restarts.
-3. Commit all changes cleanly to Git.
+### Step 6: Simplify & Shorten Copy Across Screens
+- Update `SettingsScreen.tsx`:
+  - "Slippage Tolerance", "Min Funding Rate", "Leverage Cap", "Safety Reserve", "Backup Secret Keys", "Save Settings".
+- Verify `HomeScreen.tsx`, `PortfolioScreen.tsx`, `StartEarningScreen.tsx` for clean, un-truncated labels.
+
+### Step 7: Generate & Install Android 2.5D Launcher Icons
+- Run Python script using headless Microsoft Edge to render `mobile/assets/logo-counteryield-2.5d.svg` into high-resolution PNG, then export to:
+  - `mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher.png` (48x48)
+  - `mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher.png` (72x72)
+  - `mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png` (96x96)
+  - `mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png` (144x144)
+  - `mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png` (192x192)
+  - Matching `ic_launcher_round.png` versions.
+
+### Step 8: Rebuild & Deploy APK on VPS Pipeline
+- Sync updated files to VPS at `/root/build-counteryield-apk/mobile/`.
+- Run Gradle `assembleRelease` to produce updated `counteryield-v1.0.0.apk`.
+- Copy to `/var/www/counteryield-backend/public/downloads/`.
+- Verify public download endpoint with HTTP 200.
 
 ---
 
-## 4. Risks, Constraints & Assumptions
-- **Firewall / Security Group:** Port `48392` must be accessible over TCP. If VPS firewall (`ufw` or iptables) blocks port 48392, we will allow it via `ufw allow 48392/tcp`.
-- **Cleartext Traffic:** Android 9+ blocks `http://` by default unless `usesCleartextTraffic: true` is configured in `app.json`.
-- **Install Permission:** Android requires `REQUEST_INSTALL_PACKAGES` to allow in-app APK installations.
+## 4. Data Flow & State Impact
+- Zero breaking changes to onchain contracts, wallet encryption, or telemetry WebSockets.
+- Pure presentation and native lifecycle improvements.
+
+---
+
+## 5. Constraints & Assumptions
+- All native builds executed on VPS (10GB RAM) to avoid host machine pagefile memory limits.
+- Standalone Native React Native app maintained (Zero WebViews).

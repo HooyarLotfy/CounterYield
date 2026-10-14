@@ -141,9 +141,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({ onResetOnboarding })
             </View>
           </View>
 
-          <Text style={styles.vaultTitle}>Enclave Vault Locked</Text>
+          <Text style={styles.vaultTitle}>App Locked</Text>
           <Text style={styles.vaultSubtitle}>
-            Your delta-neutral carry positions and private keys are hardware-isolated.
+            Authenticate with biometrics or PIN to access your vault.
           </Text>
 
           {/* Enclave Account Badge */}
@@ -151,7 +151,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({ onResetOnboarding })
             <View style={styles.accountLeft}>
               <ShieldCheck size={16} color={colors.lime} />
               <View>
-                <Text style={styles.accountLabel}>CONNECTED ENCLAVE ACCOUNT</Text>
+                <Text style={styles.accountLabel}>VAULT ACCOUNT</Text>
                 <Text style={styles.accountAddress}>{shortAddress}</Text>
               </View>
             </View>
@@ -192,7 +192,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({ onResetOnboarding })
               <>
                 <Unlock size={18} color="#0D0E11" strokeWidth={2.4} />
                 <Text style={styles.primaryUnlockText}>
-                  Unlock with {capabilities.label}
+                  Enter App
                 </Text>
               </>
             )}
@@ -204,7 +204,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({ onResetOnboarding })
             onPress={handleResetWallet}
           >
             <RefreshCw size={13} color={colors.textTertiary} />
-            <Text style={styles.resetBtnText}>Switch / Reset Enclave Wallet</Text>
+            <Text style={styles.resetBtnText}>Reset Wallet</Text>
           </TouchableOpacity>
         </View>
       </View>

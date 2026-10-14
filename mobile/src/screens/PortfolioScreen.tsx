@@ -131,10 +131,10 @@ export const PortfolioScreen: React.FC = () => {
         </Text>
         <Text style={styles.heroCurrency} numberOfLines={1}>
           {hasPosition
-            ? 'Denominated in Agora AUSD · Hedged on Monad Testnet'
+            ? 'Hedged in AUSD on Monad'
             : totalNetWorth > 0
-            ? 'Liquid Agora AUSD · No Active Carry Hedge'
-            : 'Vault Standby · No Assets Deposited'}
+            ? 'Liquid AUSD'
+            : 'No funds deposited'}
         </Text>
 
         {/* Delta Neutral Health Meter */}
@@ -158,7 +158,7 @@ export const PortfolioScreen: React.FC = () => {
                   ? 'Balanced · 1.00x'
                   : 'Slight Imbalance'
                 : totalNetWorth > 0
-                ? 'Idle (Unallocated Cash)'
+                ? 'Available Cash'
                 : 'Standby · 0.00x'}
             </Text>
           </View>
@@ -173,10 +173,10 @@ export const PortfolioScreen: React.FC = () => {
           <View style={styles.meterLabels}>
             <Text style={styles.meterSubtext} numberOfLines={1}>
               {hasPosition
-                ? `Spot: $${Number(spotValueUsd || 0).toFixed(0)} · Perp: -$${Number(perpMarginUsd || 0).toFixed(0)} · Net Δ: $${Number(netDelta || 0).toFixed(2)}`
+                ? `Spot: $${Number(spotValueUsd || 0).toFixed(0)} · Perp: -$${Number(perpMarginUsd || 0).toFixed(0)}`
                 : totalNetWorth > 0
-                ? `Liquid: $${Number(cashUsd || 0).toFixed(2)} · Open hedge to begin`
-                : 'No active funds deployed. Claim testnet AUSD to get started.'}
+                ? `Available: $${Number(cashUsd || 0).toFixed(2)} AUSD`
+                : 'Deposit or claim testnet funds to get started.'}
             </Text>
           </View>
         </View>
@@ -186,14 +186,14 @@ export const PortfolioScreen: React.FC = () => {
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderRow}>
           <Layers size={16} color={colors.lime} />
-          <Text style={styles.sectionTitle}>Venues & Asset Holdings</Text>
+          <Text style={styles.sectionTitle}>Asset Allocation</Text>
         </View>
         <Text style={styles.venueCount}>
           {hasPosition
             ? '4 Allocations'
             : totalNetWorth > 0
             ? '1 Allocation (Cash)'
-            : '0 Active Allocations'}
+            : '0 Active'}
         </Text>
       </View>
 
@@ -202,9 +202,9 @@ export const PortfolioScreen: React.FC = () => {
           <View style={styles.emptyIconBox}>
             <Wallet size={24} color={colors.lime} strokeWidth={2.2} />
           </View>
-          <Text style={styles.emptyVaultTitle}>Vault Standby</Text>
+          <Text style={styles.emptyVaultTitle}>No Active Deposits</Text>
           <Text style={styles.emptyVaultSubtitle}>
-            You have no assets allocated in CounterYield. Claim free testnet AUSD or deposit into the carry vault to begin automated basis harvesting.
+            Claim testnet AUSD or deposit funds to start earning yields automatically.
           </Text>
           <TouchableOpacity
             style={styles.emptyVaultBtn}
@@ -212,7 +212,7 @@ export const PortfolioScreen: React.FC = () => {
             onPress={() => setActiveTab('earn')}
           >
             <Zap size={16} color={colors.textDark} strokeWidth={2.4} />
-            <Text style={styles.emptyVaultBtnText}>Start Earning Basis Yield</Text>
+            <Text style={styles.emptyVaultBtnText}>Start Earning</Text>
           </TouchableOpacity>
         </View>
       ) : (

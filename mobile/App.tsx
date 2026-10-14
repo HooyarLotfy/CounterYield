@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, StatusBar, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, StatusBar, Platform, ScrollView, BackHandler } from "react-native";
 import { useAppStore } from "./src/state/store";
 import { WelcomeScreen } from "./src/screens/WelcomeScreen";
 import { UnlockScreen } from "./src/screens/UnlockScreen";
@@ -54,7 +54,13 @@ class ErrorBoundary extends React.Component<
 }
 
 export default function App() {
-  const { isAuthenticated, isRiskGuardModalOpen, activeTab } = useAppStore();
+  const {
+    isAuthenticated,
+    isRiskGuardModalOpen,
+    activeTab,
+    setActiveTab,
+    openRiskGuardModal,
+  } = useAppStore();
   const [hasOnboarded, setHasOnboarded] = React.useState<boolean | null>(null);
   const {
     isUpdateAvailable,
@@ -70,10 +76,42 @@ export default function App() {
     });
   }, [isAuthenticated]);
 
+  // Android Hardware Back Button navigation
+  React.useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const onBackPress = () => {
+      if (isRiskGuardModalOpen) {
+        openRiskGuardModal(false);
+        return true;
+      }
+      if (activeTab !== "home") {
+        setActiveTab("home");
+        return true;
+      }
+      return false; // Standard exit on Home screen
+    };
+
+    const backSub = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress
+    );
+    return () => backSub.remove();
+  }, [isRiskGuardModalOpen, activeTab, openRiskGuardModal, setActiveTab]);
+
+  // While checking onboarding status, keep screen dark and clean - NEVER flash WelcomeScreen
+  if (hasOnboarded === null) {
+    return (
+      <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.bg} translucent={false} />
+      </View>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.bg} translucent={false} />
         <View style={styles.appContainer}>
           {!isAuthenticated ? (
             hasOnboarded ? (
@@ -135,6 +173,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     alignSelf: "center",
     position: "relative",
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) : 0,
     ...(Platform.OS === "web"
       ? {
           boxShadow: "0 0 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08)",

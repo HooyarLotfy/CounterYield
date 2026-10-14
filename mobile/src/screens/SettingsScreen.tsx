@@ -156,19 +156,19 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        <Text style={styles.title}>Risk Policy & Safeguards</Text>
+        <Text style={styles.title}>Settings & Safety</Text>
         <Text style={styles.subtitle}>
-          Customize portable risk limits anchored to CarryLedger on Monad Testnet.
+          Configure your risk preferences and security settings.
         </Text>
 
         {/* 1. Max Leverage */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Maximum Leverage Cap</Text>
+            <Text style={styles.cardTitle}>Leverage Cap</Text>
             <Text style={styles.cardValue}>{maxLeverage}x</Text>
           </View>
           <Text style={styles.cardDescription} numberOfLines={1}>
-            1x maintains delta neutrality; 2x allows directional carry expansion.
+            1x is fully hedged. 2x adds directional risk.
           </Text>
 
           <View style={styles.buttonRow}>
@@ -188,7 +188,7 @@ export const SettingsScreen: React.FC = () => {
                     maxLeverage === lvl && styles.optionPillTextSelected,
                   ]}
                 >
-                  {lvl}x {lvl === 1 ? "(Protected)" : "(Opt-in)"}
+                  {lvl}x {lvl === 1 ? "(Hedged)" : "(Higher Yield)"}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -198,11 +198,11 @@ export const SettingsScreen: React.FC = () => {
         {/* 2. Reserve Buffer */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Reserve Buffer Ratio</Text>
+            <Text style={styles.cardTitle}>Safety Reserve</Text>
             <Text style={styles.cardValue}>{reserveBufferPercent}%</Text>
           </View>
           <Text style={styles.cardDescription} numberOfLines={1}>
-            Liquid capital cushion reserved for real-time Perpl margin defense.
+            Funds kept in reserve to protect against liquidation.
           </Text>
 
           <View style={styles.buttonRow}>
@@ -232,11 +232,11 @@ export const SettingsScreen: React.FC = () => {
         {/* 3. Slippage Tolerance */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Dual-Leg Slippage Tolerance</Text>
+            <Text style={styles.cardTitle}>Slippage Tolerance</Text>
             <Text style={styles.cardValue}>{slippageBps} bps ({(slippageBps / 100).toFixed(2)}%)</Text>
           </View>
           <Text style={styles.cardDescription} numberOfLines={1}>
-            Maximum execution variance across Kuru spot and Perpl perp fills.
+            Maximum price difference allowed between spot and perp orders.
           </Text>
 
           <View style={styles.buttonRow}>
@@ -266,11 +266,11 @@ export const SettingsScreen: React.FC = () => {
         {/* 4. Funding Floor */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Annualized Funding Floor</Text>
+            <Text style={styles.cardTitle}>Min Funding Rate</Text>
             <Text style={styles.cardValue}>{fundingFloorPercent.toFixed(1)}%</Text>
           </View>
           <Text style={styles.cardDescription} numberOfLines={1}>
-            Freezes entries and flags unwind if trailing funding yields fall below this rate.
+            Pauses strategy if funding yield falls below this rate.
           </Text>
 
           <View style={styles.buttonRow}>
@@ -317,7 +317,7 @@ export const SettingsScreen: React.FC = () => {
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Save size={16} color="#0D0E11" strokeWidth={2.4} />
-              <Text style={styles.saveBtnText}>Save Risk Policy Onchain</Text>
+              <Text style={styles.saveBtnText}>Save Settings</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -328,7 +328,7 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.backupHeaderRow}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Key size={18} color={colors.lime} />
-            <Text style={styles.backupSectionTitle}>Vault Backup & Keys</Text>
+            <Text style={styles.backupSectionTitle}>Backup Secret Keys</Text>
           </View>
           <View style={styles.enclaveBadge}>
             <Lock size={12} color={colors.lime} />
@@ -337,7 +337,7 @@ export const SettingsScreen: React.FC = () => {
         </View>
 
         <Text style={styles.backupDescription}>
-          Export your 64-character EVM testnet private key and 24-word BIP-39 mnemonic recovery phrase to import your account into MetaMask, Rabby, or Foundry.
+          Export your private key and recovery phrase to back up or use your wallet in MetaMask.
         </Text>
 
         <TouchableOpacity
@@ -351,13 +351,13 @@ export const SettingsScreen: React.FC = () => {
           ) : isRevealed ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <EyeOff size={16} color={colors.textSecondary} />
-              <Text style={styles.revealToggleText}>Hide Vault Credentials</Text>
+              <Text style={styles.revealToggleText}>Hide Secret Keys</Text>
             </View>
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Eye size={16} color={colors.lime} />
               <Text style={[styles.revealToggleText, { color: colors.lime }]}>
-                Reveal Private Key & Seed Phrase
+                Reveal Secret Keys
               </Text>
             </View>
           )}
@@ -369,14 +369,14 @@ export const SettingsScreen: React.FC = () => {
             <View style={styles.warningBanner}>
               <AlertTriangle size={16} color="#F59E0B" />
               <Text style={styles.warningBannerText}>
-                Never share these credentials. Anyone with your private key or seed phrase has full control over your Monad testnet assets.
+                Never share these keys. Anyone with them has full control of your funds.
               </Text>
             </View>
 
             {/* EVM Private Key Card */}
             <View style={styles.credentialCard}>
               <View style={styles.credentialCardHeader}>
-                <Text style={styles.credentialCardLabel}>EVM TESTNET PRIVATE KEY</Text>
+                <Text style={styles.credentialCardLabel}>PRIVATE KEY</Text>
                 <TouchableOpacity
                   style={styles.copyPill}
                   activeOpacity={0.7}
@@ -403,7 +403,7 @@ export const SettingsScreen: React.FC = () => {
             {/* 24-Word Mnemonic Phrase Card */}
             <View style={styles.credentialCard}>
               <View style={styles.credentialCardHeader}>
-                <Text style={styles.credentialCardLabel}>24-WORD BIP-39 RECOVERY PHRASE</Text>
+                <Text style={styles.credentialCardLabel}>24-WORD RECOVERY PHRASE</Text>
                 <TouchableOpacity
                   style={styles.copyPill}
                   activeOpacity={0.7}
@@ -440,26 +440,33 @@ export const SettingsScreen: React.FC = () => {
         {/* App Version & Auto-Update Section */}
         <View style={styles.sectionDivider} />
         <View style={styles.versionCard}>
-          <View style={styles.versionCardHeader}>
-            <View>
+          <View style={styles.versionTopInfo}>
+            <View style={styles.versionTitleRow}>
               <Text style={styles.versionTitle}>CounterYield for Android</Text>
-              <Text style={styles.versionSubtext}>Version 1.0.0 (Build 1) · Production VPS: 48392</Text>
+              <View style={styles.versionLiveBadge}>
+                <View style={styles.versionLiveDot} />
+                <Text style={styles.versionLiveText}>Production</Text>
+              </View>
             </View>
-            <TouchableOpacity
-              style={styles.checkUpdateBtn}
-              activeOpacity={0.7}
-              onPress={handleCheckUpdate}
-            >
-              <RefreshCw size={13} color={colors.lime} />
-              <Text style={styles.checkUpdateText}>Check Updates</Text>
-            </TouchableOpacity>
+            <Text style={styles.versionSubtext}>Version 1.0.0 (Build 1) · VPS Port 48392</Text>
           </View>
+
+          <TouchableOpacity
+            style={styles.checkUpdateBtn}
+            activeOpacity={0.75}
+            onPress={handleCheckUpdate}
+          >
+            <RefreshCw size={14} color={colors.lime} />
+            <Text style={styles.checkUpdateText}>Check for Updates</Text>
+          </TouchableOpacity>
+
           {checkUpdateStatus && (
             <Text style={styles.updateStatusText}>{checkUpdateStatus}</Text>
           )}
         </View>
 
-        <View style={{ height: 60 }} />
+        {/* Comfortable bottom clearance above BottomTabBar */}
+        <View style={{ height: 130 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -768,35 +775,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)",
   },
-  versionCardHeader: {
+  versionTopInfo: {
+    marginBottom: 14,
+  },
+  versionTitleRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
   },
   versionTitle: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  versionLiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(159, 232, 37, 0.1)",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+  },
+  versionLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.lime,
+  },
+  versionLiveText: {
+    color: colors.lime,
+    fontSize: 10,
     fontWeight: "700",
   },
   versionSubtext: {
     color: colors.textTertiary,
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 12,
+    marginTop: 3,
   },
   checkUpdateBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    backgroundColor: "rgba(159, 232, 37, 0.08)",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(159, 232, 37, 0.12)",
     borderWidth: 1,
-    borderColor: "rgba(159, 232, 37, 0.2)",
+    borderColor: "rgba(159, 232, 37, 0.25)",
+    width: "100%",
   },
   checkUpdateText: {
     color: colors.lime,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
   },
   updateStatusText: {
@@ -804,5 +835,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginTop: 10,
+    textAlign: "center",
   },
 });
