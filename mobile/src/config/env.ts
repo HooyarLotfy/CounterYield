@@ -4,13 +4,7 @@
  * - On mobile physical device: uses EXPO_PUBLIC_API_URL from .env.
  */
 const resolveApiUrl = (): string => {
-  if (typeof window !== 'undefined' && window.location) {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:4000';
-    }
-    return `http://${window.location.hostname}:4000`;
-  }
-  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+  return process.env.EXPO_PUBLIC_API_URL || 'http://153.75.248.37:48392';
 };
 
 export const config = {

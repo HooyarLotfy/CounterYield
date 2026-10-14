@@ -33,6 +33,10 @@ indexer/generated/
 *.key
 *.mobileprovision
 *.orig.*
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/.cxx/
+mobile/android/local.properties
 
 # Logs & temp
 *.log

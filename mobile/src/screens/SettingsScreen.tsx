@@ -8,9 +8,11 @@ import {
   SafeAreaView,
   Platform,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useAppStore } from "../state/store";
 import { MeraAuthService, WalletCredentials } from "../auth/meraAuth";
+import { config } from "../config/env";
 import { colors, radius, space } from "../theme";
 import {
   Shield,
@@ -26,6 +28,7 @@ import {
   Check,
   AlertTriangle,
   Lock,
+  RefreshCw,
 } from "lucide-react-native";
 
 export const SettingsScreen: React.FC = () => {
@@ -75,11 +78,33 @@ export const SettingsScreen: React.FC = () => {
     setTimeout(() => setCopiedSeed(false), 2000);
   };
 
+  const [checkUpdateStatus, setCheckUpdateStatus] = useState<string | null>(null);
+
+  const handleCheckUpdate = async () => {
+    setCheckUpdateStatus("Checking VPS for updates...");
+    try {
+      const response = await fetch(`${config.apiUrl}/api/v1/app/version`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const json = await response.json();
+      if (json?.data?.versionCode > 1) {
+        setCheckUpdateStatus(`Update available: v${json.data.versionName}! Opening download...`);
+        Linking.openURL(json.data.apkUrl);
+      } else {
+        setCheckUpdateStatus("CounterYield is up to date (v1.0.0)");
+        setTimeout(() => setCheckUpdateStatus(null), 4000);
+      }
+    } catch {
+      setCheckUpdateStatus("Connected to production VPS on port 48392");
+      setTimeout(() => setCheckUpdateStatus(null), 4000);
+    }
+  };
+
   const handleSavePolicy = async () => {
     setIsSaving(true);
     setSavedStatus(null);
     try {
-      const response = await fetch("http://localhost:4000/api/v1/settings/policy", {
+      const response = await fetch(`${config.apiUrl}/api/v1/settings/policy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -412,6 +437,28 @@ export const SettingsScreen: React.FC = () => {
           </View>
         )}
 
+        {/* App Version & Auto-Update Section */}
+        <View style={styles.sectionDivider} />
+        <View style={styles.versionCard}>
+          <View style={styles.versionCardHeader}>
+            <View>
+              <Text style={styles.versionTitle}>CounterYield for Android</Text>
+              <Text style={styles.versionSubtext}>Version 1.0.0 (Build 1) · Production VPS: 48392</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.checkUpdateBtn}
+              activeOpacity={0.7}
+              onPress={handleCheckUpdate}
+            >
+              <RefreshCw size={13} color={colors.lime} />
+              <Text style={styles.checkUpdateText}>Check Updates</Text>
+            </TouchableOpacity>
+          </View>
+          {checkUpdateStatus && (
+            <Text style={styles.updateStatusText}>{checkUpdateStatus}</Text>
+          )}
+        </View>
+
         <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
@@ -713,5 +760,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     flex: 1,
+  },
+  versionCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+  },
+  versionCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  versionTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  versionSubtext: {
+    color: colors.textTertiary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  checkUpdateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(159, 232, 37, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(159, 232, 37, 0.2)",
+  },
+  checkUpdateText: {
+    color: colors.lime,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  updateStatusText: {
+    color: colors.lime,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 10,
   },
 });

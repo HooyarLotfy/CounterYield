@@ -11,7 +11,18 @@
       "bundleIdentifier": "xyz.counteryield.app"
     },
     "android": {
-      "package": "xyz.counteryield.app"
+      "package": "xyz.counteryield.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0D0E11"
+      },
+      "permissions": [
+        "REQUEST_INSTALL_PACKAGES",
+        "INTERNET",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro"

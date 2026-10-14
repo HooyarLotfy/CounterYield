@@ -11,6 +11,8 @@ import { ActivityScreen } from "./src/screens/ActivityScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { BottomTabBar } from "./src/components/BottomTabBar";
 import { UnwindModal } from "./src/components/UnwindModal";
+import { UpdateModal } from "./src/components/UpdateModal";
+import { useAppUpdater } from "./src/services/useAppUpdater";
 import { MeraAuthService } from "./src/auth/meraAuth";
 import { colors } from "./src/theme";
 
@@ -54,6 +56,13 @@ class ErrorBoundary extends React.Component<
 export default function App() {
   const { isAuthenticated, isRiskGuardModalOpen, activeTab } = useAppStore();
   const [hasOnboarded, setHasOnboarded] = React.useState<boolean | null>(null);
+  const {
+    isUpdateAvailable,
+    updateInfo,
+    currentVersion,
+    triggerInstall,
+    dismissUpdate,
+  } = useAppUpdater();
 
   React.useEffect(() => {
     MeraAuthService.hasCompletedOnboarding().then((done) => {
@@ -99,6 +108,15 @@ export default function App() {
               <UnwindModal />
             </>
           )}
+
+          {/* In-App Native Auto-Updater Modal */}
+          <UpdateModal
+            visible={isUpdateAvailable}
+            updateInfo={updateInfo}
+            currentVersion={currentVersion}
+            onInstall={triggerInstall}
+            onDismiss={dismissUpdate}
+          />
         </View>
       </View>
     </ErrorBoundary>
